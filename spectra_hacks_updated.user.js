@@ -58,6 +58,15 @@
     let wireFramesBool = false;
 
 
+    let espEnabled = false;
+
+    let chestESPEnabled = false;
+    let oreESPEnabled = false;
+    let chestOreInterval = null;
+    let chestBoxes = {};
+
+
+
     let isSkyboxHidden = false;
 
 
@@ -109,8 +118,6 @@
     let scaffoldIntervalId = null;
 
 
-
-
     let eIdKey = null;
     let targetEntity = null;
     let targetEntityDistance = null;
@@ -128,6 +135,10 @@
     let fadeVolumeInterval;
     let spaceHeld = false;
     let antiBanEnabled = false;
+
+
+    const scannedChunks = new Set();
+    let chunkDataField = null;
 
     // ETC
     let playerKey = null;
@@ -316,6 +327,138 @@
         }, duration);
     }
 
+    function clearESPBoxes() {
+        for (const key in chestBoxes) {
+            for (const {
+                    mesh,
+                    id
+                } of chestBoxes[key]) {
+                mesh.dispose();
+                Fuxny.entities.deleteEntity(id);
+            }
+        }
+        scannedChunks.clear();
+        chestBoxes = {};
+    }
+
+    function reverseIndex(i, stride) {
+        const x = Math.floor(i / stride[0]);
+        const remX = i % stride[0];
+        const y = Math.floor(remX / stride[1]);
+        const z = remX % stride[1];
+        return [x, y, z];
+    }
+
+    function getChunkKey(chunk) {
+        const [wx, wy, wz] = chunk.pos || [0, 0, 0];
+        const cx = Math.floor(wx / 32);
+        const cy = Math.floor(wy / 32);
+        const cz = Math.floor(wz / 32);
+        return `${cx}|${cy}|${cz}|overworld`;
+    }
+
+    function scanChunk(chunk, blockIDs) {
+        const blockData = chunk[chunkDataField];
+        if (!blockData) return;
+
+        const {
+            data,
+            stride
+        } = blockData;
+
+        const pos = chunk.pos || [0, 0, 0];
+        if (!data || !stride) return;
+
+        const chunkKey = getChunkKey(chunk);
+        for (let i = 0; i < data.length; i++) {
+            const blockID = data[i];
+            if (!blockIDs.includes(blockID)) continue;
+
+
+
+
+            const [x, y, z] = reverseIndex(i, stride);
+            const worldX = pos[0] + x + 0.5;
+            const worldY = pos[1] + y + 0.5;
+            const worldZ = pos[2] + z + 0.5;
+
+            const mesh = Fuxny.Lion.Mesh.CreateBox("espbox", 0.5, false, 1, Fuxny.Lion.scene);
+            mesh.position.set(worldX, worldY, worldZ);
+            mesh.renderingGroupId = 1;
+
+            mesh.material = new Fuxny.Lion.StandardMaterial("mat", Fuxny.Lion.scene)
+
+            const id = Fuxny.entities.add([worldX, worldY, worldZ], null, null, mesh);
+            if (!chestBoxes[chunkKey]) chestBoxes[chunkKey] = [];
+            chestBoxes[chunkKey].push({
+                mesh,
+                id
+            });
+
+
+            if ([204, 205, 206, 207].includes(blockID)) {
+                console.log("FOUNDCHEST")
+
+                mesh.material.diffuseColor = new Fuxny.Lion.Color3(1, 0.5, 0); // orange
+                mesh.material.emissiveColor = new Fuxny.Lion.Color3(1, 0.5, 0); // makes it glow orange
+            }
+            if (blockID === 45) {
+                mesh.material.diffuseColor = new Fuxny.Lion.Color3(0, 0, 1); // blue
+                mesh.material.emissiveColor = new Fuxny.Lion.Color3(0, 0, 1); // makes it glow blue
+            }
+
+            if (blockID === 465) {
+                mesh.material.diffuseColor = new Fuxny.Lion.Color3(0.7, 0.5, 1); // pale purple
+                mesh.material.emissiveColor = new Fuxny.Lion.Color3(0.7, 0.5, 1); // makes it glow pale purple
+            }
+
+
+
+
+        }
+    }
+
+    function scanAllChunks() {
+        if (!Fuxny?.world || !Fuxny?.world?.[Fuxny.impKey]?.hash) return;
+        const chunkHash = Fuxny.world[Fuxny.impKey].hash;
+        // Step 1: Remove boxes for chunks no longer loaded
+        for (const scannedKey of scannedChunks) {
+            if (!(scannedKey in chestBoxes)) continue;
+
+            if (!Object.values(chunkHash).some(chunk => getChunkKey(chunk) === scannedKey)) {
+                // Delete all meshes for this chunk
+                for (const {
+                        mesh,
+                        id
+                    } of chestBoxes[scannedKey]) {
+                    mesh.dispose(); // remove from scene
+                    Fuxny.entities.deleteEntity(id); // remove from entity system if needed
+                }
+                delete chestBoxes[scannedKey];
+                scannedChunks.delete(scannedKey);
+            }
+        }
+
+        // Step 2: Scan newly loaded chunks
+        for (const chunkKey in chunkHash) {
+
+            const chunk = chunkHash[chunkKey];
+            if (!chunkDataField) {
+                autoDetectChunkDataField(chunk);
+                if (!chunkDataField) continue; // Skip if still not found
+            }
+
+            const blockData = chunk[chunkDataField];
+            if (!blockData?.data || !blockData.stride || !chunk.pos) continue;
+
+
+            const key = getChunkKey(chunk);
+            if (scannedChunks.has(key)) continue;
+            scannedChunks.add(key);
+            if (chestESPEnabled) scanChunk(chunk, [204, 205, 206, 207]);
+            if (oreESPEnabled) scanChunk(chunk, [44, 45, 465, 50]);
+        }
+    }
 
     function stopMoving() {
         if (moveInterval) {
@@ -1069,7 +1212,6 @@ function triggerXPDuper() {
 
 
 
-
     function performInjection() {
         l.init();
         function inject() {
@@ -1165,6 +1307,31 @@ function triggerXPDuper() {
             };
             playerInventoryParent = Fuxny.entities[Fuxny.impKey].inventory.list[0].opWrapper
 
+            function autoDetectChunkDataField(chunk) {
+                for (const key of Object.keys(chunk)) {
+                    const val = chunk[key];
+                    if (!val) continue;
+
+                    if (
+                        typeof val === "object" &&
+                        Array.isArray(val.stride) &&
+                        val.stride.length === 3 &&
+                        (
+                            Array.isArray(val.data) ||
+                            ArrayBuffer.isView(val.data) // covers Uint16Array etc.
+                        )
+                    ) {
+                        console.log("✅ Detected chunk data field:", key);
+                        chunkDataField = key;
+                        return key;
+                    }
+                }
+
+                console.warn("❌ Failed to auto-detect chunk data field");
+                return null;
+            }
+
+            autoDetectChunkDataField(Object.values(Fuxny.world[Fuxny.impKey].hash)[0]);
 
 
             const maybeEntity = r.values(r.values(Fuxny.entities[Fuxny.impKey])[22].list[0])[1];
@@ -1620,6 +1787,9 @@ function triggerXPDuper() {
 
             <div class="spectra-category hidden" data-tab-content="visuals">
                 <div class="spectra-category-title">Visuals</div>
+                <div class="spectra-toggle"><label>ESP</label><input type="checkbox" id="hack-esp"></div>
+                <div class="spectra-toggle"><label>Chest ESP</label><input type="checkbox" id="hack-chest-esp"></div>
+                <div class="spectra-toggle"><label>Ore ESP</label><input type="checkbox" id="hack-ore-esp"></div>
                 <div class="spectra-toggle"><label>Nametags</label><input type="checkbox" id="hack-nametags"></div>
                 <div class="spectra-toggle"><label>Night</label><input type="checkbox" id="hack-night"></div>
             </div>
@@ -1954,13 +2124,37 @@ function triggerXPDuper() {
                     // 1. Prioritize directly under the player
                     if (checkPlace(blockX, blockY - 1, blockZ)) {
                         wangPlace([blockX, blockY - 1, blockZ]);
-                        return; // Block placed, exit for this interval
+                        return;
                     }
 
-                    // 2. If that fails, check all 8 surrounding blocks (auto-fallback/instant retry)
+                    // 2. Determine movement direction from velocity
+                    const velocity = physState.velocity;
+                    const absX = Math.abs(velocity[0]);
+                    const absZ = Math.abs(velocity[2]);
+
+                    let primaryOffset = [0, 0];
+                    if (absX > 0.1 || absZ > 0.1) { // Check if player is moving
+                        if (absX > absZ) {
+                            primaryOffset[0] = Math.sign(velocity[0]);
+                        } else {
+                            primaryOffset[1] = Math.sign(velocity[2]);
+                        }
+                    }
+
+                    // 3. Check in the direction of movement
+                    if (primaryOffset[0] !== 0 || primaryOffset[1] !== 0) {
+                        const nx = blockX + primaryOffset[0];
+                        const nz = blockZ + primaryOffset[1];
+                        if (checkPlace(nx, blockY - 1, nz)) {
+                            wangPlace([nx, blockY - 1, nz]);
+                            return;
+                        }
+                    }
+
+                    // 4. As a last resort, check all 8 directions to prevent falling
                     const offsets = [
-                        [1, 0], [-1, 0], [0, 1], [0, -1], // Cardinal
-                        [1, 1], [1, -1], [-1, 1], [-1, -1]  // Diagonal
+                        [1, 0], [-1, 0], [0, 1], [0, -1],
+                        [1, 1], [1, -1], [-1, 1], [-1, -1]
                     ];
 
                     for (const [ox, oz] of offsets) {
@@ -1968,7 +2162,7 @@ function triggerXPDuper() {
                         const nz = blockZ + oz;
                         if (checkPlace(nx, blockY - 1, nz)) {
                             wangPlace([nx, blockY - 1, nz]);
-                            return; // Block placed, exit for this interval
+                            return;
                         }
                     }
                 }, 50);
@@ -2062,6 +2256,46 @@ function triggerXPDuper() {
         });
 
         // --- Visuals ---
+        document.getElementById('hack-esp')?.addEventListener('change', e => {
+            if (!preCheck("ESP", e.target)) return;
+            espEnabled = e.target.checked;
+            const groupId = espEnabled ? 2 : 0;
+            if (Array.isArray(r.values(Fuxny.rendering)[18].thinMeshes)) {
+                for (const thinMesh of r.values(Fuxny.rendering)[18].thinMeshes) {
+                    if (thinMesh?.mesh && typeof thinMesh.mesh.renderingGroupId === "number") {
+                        thinMesh.mesh.renderingGroupId = groupId;
+                    }
+                }
+            }
+            showTemporaryNotification(`ESP ${espEnabled ? 'enabled' : 'disabled'}`);
+        });
+
+        document.getElementById('hack-chest-esp')?.addEventListener('change', e => {
+            if (!preCheck("Chest ESP", e.target)) return;
+            chestESPEnabled = e.target.checked;
+            if (chestESPEnabled || oreESPEnabled) {
+                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
+                scanAllChunks();
+            } else {
+                if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
+                clearESPBoxes();
+            }
+            showTemporaryNotification(`Chest ESP ${chestESPEnabled ? 'enabled' : 'disabled'}`);
+        });
+
+        document.getElementById('hack-ore-esp')?.addEventListener('change', e => {
+            if (!preCheck("Ore ESP", e.target)) return;
+            oreESPEnabled = e.target.checked;
+            if (chestESPEnabled || oreESPEnabled) {
+                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
+                scanAllChunks();
+            } else {
+                if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
+                clearESPBoxes();
+            }
+            showTemporaryNotification(`Ore ESP ${oreESPEnabled ? 'enabled' : 'disabled'}`);
+        });
+
 
         document.getElementById('hack-nametags')?.addEventListener('change', e => {
             if (!preCheck("Nametags", e.target)) return;
