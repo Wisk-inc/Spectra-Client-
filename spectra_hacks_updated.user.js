@@ -96,6 +96,8 @@
     let __nullKey = null; //Entity enabled key
     let __stringKey = null; //Entity ID key "Then why didn't you just label them that?"
     let animationFrameId = null;
+    let hitBoxEnabled = false;
+    const hitboxes = {};
 
 
     let cachedNameTagParent = null;
@@ -116,6 +118,13 @@
 
     let scaffoldEnabled = false;
     let scaffoldIntervalId = null;
+    let scaffoldBlockLimit = 3;
+
+    let enemyHealthGuiEnabled = false;
+    let healthWatcherInterval = null;
+    let lastPercent = null;
+    let lastChangeTime = Date.now();
+    let resetTimeout = null;
 
 
     let eIdKey = null;
@@ -134,7 +143,12 @@
     let spaceVid;
     let fadeVolumeInterval;
     let spaceHeld = false;
+    let bigHeadsEnabled = false;
     let antiBanEnabled = false;
+    let freeCamEnabled = false;
+    let freeCamSpeed = 0.5;
+    let originalFollowState = null;
+    let freeCamLoopId = null;
 
 
     const scannedChunks = new Set();
@@ -148,7 +162,9 @@
     let playerEntity = null;
     let skyboxEntity = null;
     let skyboxMesh = null;
+    let bigHeadsInterval = null;
     let targetFinderId = null;
+    let setHealthBar = null;
     let playerInventoryParent = null;
 
 
@@ -1210,6 +1226,230 @@ function triggerXPDuper() {
     }
 }
 
+function enableFreeCam() {
+    if (!injectedBool) return;
+    freeCamEnabled = true;
+
+    originalFollowState = Fuxny.noa.ents.getState(Fuxny.noa.camera.cameraTarget, 'followsEntity');
+    Fuxny.noa.ents.removeComponent(Fuxny.noa.camera.cameraTarget, 'followsEntity');
+
+    const playerMesh = Fuxny.noa.ents.getState(Fuxny.noa.playerEntity, 'mesh').mesh;
+    if (playerMesh) playerMesh.visibility = 0;
+    Fuxny.noa.ents.getPhysicsBody(Fuxny.noa.playerEntity).gravityScale = 0;
+
+    freeCamLoopId = setInterval(freeCamLoop, 16);
+    showTemporaryNotification("Free Cam enabled");
+}
+
+function disableFreeCam() {
+    if (!injectedBool) return;
+    freeCamEnabled = false;
+
+    if (originalFollowState) {
+        Fuxny.noa.ents.addComponent(Fuxny.noa.camera.cameraTarget, 'followsEntity', originalFollowState);
+    }
+
+    const playerMesh = Fuxny.noa.ents.getState(Fuxny.noa.playerEntity, 'mesh').mesh;
+    if (playerMesh) playerMesh.visibility = 1;
+    Fuxny.noa.ents.getPhysicsBody(Fuxny.noa.playerEntity).gravityScale = 1;
+
+    if (freeCamLoopId) clearInterval(freeCamLoopId);
+    freeCamLoopId = null;
+    showTemporaryNotification("Free Cam disabled");
+}
+
+function freeCamLoop() {
+    if (!freeCamEnabled) return;
+
+    const camPos = Fuxny.noa.ents.getPosition(Fuxny.noa.camera.cameraTarget);
+    const direction = Fuxny.noa.camera.getDirection();
+    const inputs = Fuxny.noa.inputs.state;
+
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
+
+    if (inputs.forward) dz += 1;
+    if (inputs.backward) dz -= 1;
+    if (inputs.left) dx -= 1;
+    if (inputs.right) dx += 1;
+    if (inputs.jump) dy += 1;
+    if (inputs.crouch) dy -= 1;
+
+    const move = [dx, dy, dz];
+    const len = Math.sqrt(move[0]*move[0] + move[1]*move[1] + move[2]*move[2]);
+    if (len > 0) {
+        move[0] /= len;
+        move[1] /= len;
+        move[2] /= len;
+    }
+
+    const forwardVec = direction;
+    const rightVec = [forwardVec[2], 0, -forwardVec[0]];
+
+    camPos[0] += (forwardVec[0] * move[2] + rightVec[0] * move[0]) * freeCamSpeed;
+    camPos[1] += move[1] * freeCamSpeed;
+    camPos[2] += (forwardVec[2] * move[2] + rightVec[2] * move[0]) * freeCamSpeed;
+
+    Fuxny.noa.ents.setPosition(Fuxny.noa.camera.cameraTarget, camPos);
+}
+
+    function makeHitboxes() {
+        if (!injectedBool || !Fuxny.rendering) return;
+
+        const rendering = r.values(Fuxny.rendering)[18];
+        if (!rendering) return;
+
+        const playerIds = n.noa.playerList;
+        if (!playerIds) return;
+
+        const activeEIds = new Set(playerIds);
+
+        // Create hitboxes for new players
+        for (const playerId of playerIds) {
+            if (hitboxes[playerId]) continue; // Skip if hitbox already exists
+
+            let newBox_00 = Fuxny.Lion.Mesh.CreateBox("hitbox_mesh_" + playerId, 1, false, 1, Fuxny.Lion.scene);
+            newBox_00.renderingGroupId = 2;
+
+            newBox_00.material = new Fuxny.Lion.StandardMaterial("mat", Fuxny.Lion.scene);
+            newBox_00.material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
+            newBox_00.material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
+            newBox_00.name = '_hitbox';
+            newBox_00.id = '__hitbox_' + playerId;
+
+            let defaultPosition = new newBox_00.position.constructor(0, 0.32, 0);
+            newBox_00.position = defaultPosition.clone();
+            newBox_00._scaling._y = 2.2;
+            newBox_00.material.alpha = 0.5;
+            newBox_00.isVisible = hitBoxEnabled;
+
+            const transformNodeKey = playerId.toString();
+            rendering.attachTransformNode(newBox_00, transformNodeKey, 13);
+            r.values(Fuxny.rendering)[27].call(Fuxny.rendering, newBox_00);
+
+            Object.defineProperty(newBox_00._nodeDataStorage, '_isEnabled', {
+                get: () => true,
+                set: (v) => {},
+                configurable: false
+            });
+
+            hitboxes[playerId] = newBox_00;
+        }
+
+        // Cleanup hitboxes for players who have left
+        for (const eId in hitboxes) {
+            if (!activeEIds.has(parseInt(eId))) {
+                hitboxes[eId]?.dispose();
+                delete hitboxes[eId];
+            }
+        }
+
+        // Toggle visibility for all active hitboxes
+        for (const eId in hitboxes) {
+            if (hitboxes[eId]) {
+                hitboxes[eId].isVisible = hitBoxEnabled;
+            }
+        }
+    }
+
+    function startHealthWatcher() {
+        if (healthWatcherInterval) clearInterval(healthWatcherInterval);
+
+        healthWatcherInterval = setInterval(() => {
+            if (!injectedBool || !lastClosestId) {
+                setHealthBar(100, false); // Hide bar if no target
+                return;
+            }
+
+            const state = Fuxny.entities.getState(lastClosestId, "genericLifeformState");
+            if (!state || !state.isAlive) {
+                setHealthBar(100, false);
+                return;
+            }
+
+            // This is an assumption based on common game engine patterns.
+            // The old method was obfuscated and has broken.
+            const health = state.health;
+            const maxHealth = state.maxHealth;
+
+            if (typeof health === 'number' && typeof maxHealth === 'number' && maxHealth > 0) {
+                const percent = (health / maxHealth) * 100;
+                setHealthBar(percent, true);
+            } else {
+                setHealthBar(100, false);
+            }
+
+        }, 300);
+    }
+
+    (() => {
+        // Remove if already present
+        const old = document.getElementById("vertical-health-bar");
+        if (old) old.remove();
+
+        // Create bar container
+        const container = document.createElement("div");
+        container.id = "vertical-health-bar";
+        Object.assign(container.style, {
+            position: "fixed",
+            left: "calc(50% - 200px)", // 100px left of center
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "4px",
+            height: "200px",
+            background: "#000",
+            border: "2px solid black",
+            zIndex: 120,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "flex-end",
+            overflow: "hidden"
+        });
+
+        // Create fill element
+        const fill = document.createElement("div");
+        Object.assign(fill.style, {
+            width: "100%",
+            height: "100%",
+            background: "limegreen",
+            transform: "scaleY(1)",
+            transformOrigin: "bottom",
+            transition: "transform 0.2s ease, background 0.2s ease", // <-- add comma here
+        });
+
+        container.appendChild(fill);
+        document.body.appendChild(container);
+
+        // Function to compute smooth gradient color from green → red
+        function getHealthColor(health) {
+            const ratio = health / 100;
+
+            if (ratio > 0.5) {
+                // Bright green → orange
+                const t = (ratio - 0.5) * 2;
+                const r = Math.round(255 * (1 - t));
+                const g = 255;
+                return `rgb(${r}, ${g}, 0)`; // green to yellow to orange
+            } else {
+                // Orange → red
+                const t = ratio * 2;
+                const r = 255;
+                const g = Math.round(255 * t);
+                return `rgb(${r}, ${g}, 0)`; // orange to red
+            }
+        }
+
+
+        // Global health setter and show/hide toggle
+        setHealthBar = function(health, show = true) {
+            const clamped = Math.max(0, Math.min(health, 100));
+            fill.style.transform = `scaleY(${clamped / 100})`;
+            fill.style.background = getHealthColor(clamped);
+            container.style.display = show ? "flex" : "none";
+        };
+        setHealthBar(100, false)
+    })();
 
 
     function performInjection() {
@@ -1512,6 +1752,17 @@ function triggerXPDuper() {
                     }
                 }
                 
+                if (lastClosestId !== closestId) {
+                    if (hitboxes[lastClosestId]) { // Revert old target color
+                         hitboxes[lastClosestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
+                         hitboxes[lastClosestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
+                    }
+                    if (hitboxes[closestId]) { // Highlight new target
+                        hitboxes[closestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 0, 0);
+                        hitboxes[closestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 0, 0);
+                    }
+                }
+
                 lastClosestId = closestId;
 
             }, 200);
@@ -1519,6 +1770,7 @@ function triggerXPDuper() {
         inject();
         setupKillAuraBox();
         startTargetFinder();
+        setInterval(makeHitboxes, 1000);
     }
 
     waitForElement('div.MainLoadingState.FullyFancyText', (el) => {
@@ -1774,6 +2026,10 @@ function triggerXPDuper() {
                 <div class="spectra-toggle"><label>Jesus</label><input type="checkbox" id="hack-jesus"></div>
                 <div class="spectra-toggle"><label>BHOP</label><input type="checkbox" id="hack-bhop"></div>
                 <div class="spectra-toggle"><label>Scaffold</label><input type="checkbox" id="hack-scaffold"></div>
+                <div class="spectra-setting">
+                    <label>Scaffold Block Limit</label>
+                    <input type="number" id="scaffold-block-limit" value="3" min="1" max="8" style="width: 50px; text-align: center; background: #333; color: white; border: 1px solid #555;">
+                </div>
                 <div class="spectra-toggle"><label>Walljump</label><input type="checkbox" id="hack-walljump"></div>
                 <div class="spectra-toggle"><label>Waterjump</label><input type="checkbox" id="hack-waterjump"></div>
                 <div class="spectra-toggle"><label>Noclip Move</label><input type="checkbox" id="hack-noclip-move"></div>
@@ -1790,8 +2046,12 @@ function triggerXPDuper() {
                 <div class="spectra-toggle"><label>ESP</label><input type="checkbox" id="hack-esp"></div>
                 <div class="spectra-toggle"><label>Chest ESP</label><input type="checkbox" id="hack-chest-esp"></div>
                 <div class="spectra-toggle"><label>Ore ESP</label><input type="checkbox" id="hack-ore-esp"></div>
+                <div class="spectra-toggle"><label>Hitboxes</label><input type="checkbox" id="hack-hitboxes"></div>
                 <div class="spectra-toggle"><label>Nametags</label><input type="checkbox" id="hack-nametags"></div>
+                <div class="spectra-toggle"><label>Enemy Health</label><input type="checkbox" id="hack-enemy-health"></div>
                 <div class="spectra-toggle"><label>Night</label><input type="checkbox" id="hack-night"></div>
+                <div class="spectra-toggle"><label>Bigheads</label><input type="checkbox" id="hack-bigheads"></div>
+                <div class="spectra-toggle"><label>Free Cam</label><input type="checkbox" id="hack-free-cam"></div>
             </div>
 
             <div class="spectra-category hidden" data-tab-content="experimental">
@@ -1826,6 +2086,14 @@ function triggerXPDuper() {
                         <option value="'Courier New', monospace">Courier New</option>
                     </select>
                 </div>
+                <div class="spectra-setting">
+                    <label>Gradient Background</label>
+                    <input type="checkbox" id="theme-gradient-toggle" checked>
+                </div>
+                <div class="spectra-setting">
+                    <label>Gradient Angle</label>
+                    <input type="range" id="theme-gradient-angle" min="0" max="360" value="135" style="width: 120px;">
+                </div>
                 <button class="spectra-button" id="theme-reset">Reset Theme</button>
                 <button class="spectra-button" id="hack-ranks">Spoof Ranks</button>
                 <button class="spectra-button" id="hack-player-coords">Show Player Coords</button>
@@ -1843,42 +2111,85 @@ function triggerXPDuper() {
     const primaryColorPicker = document.getElementById('theme-primary-color');
     const secondaryColorPicker = document.getElementById('theme-secondary-color');
     const fontSelect = document.getElementById('theme-font-select');
+    const gradientToggle = document.getElementById('theme-gradient-toggle');
+    const gradientAngleSlider = document.getElementById('theme-gradient-angle');
     const themeResetBtn = document.getElementById('theme-reset');
 
     const defaultTheme = {
         primary: '#D30000',
         secondary: '#3e0000',
-        font: '"Segoe UI", sans-serif'
+        font: '"Segoe UI", sans-serif',
+        gradientEnabled: true,
+        gradientAngle: 135
     };
 
-    function applyTheme(primary, secondary, font) {
-        uiElement.style.setProperty('--primary-color', primary);
-        uiElement.style.setProperty('--secondary-color', secondary);
-        uiElement.style.setProperty('--font-family', font);
+    function applyTheme(theme) {
+        uiElement.style.setProperty('--primary-color', theme.primary);
+        uiElement.style.setProperty('--secondary-color', theme.secondary);
+        uiElement.style.setProperty('--font-family', theme.font);
+
+        if (theme.gradientEnabled) {
+            uiElement.style.background = `linear-gradient(${theme.gradientAngle}deg, var(--primary-color), var(--secondary-color))`;
+        } else {
+            uiElement.style.background = `var(--primary-color)`;
+        }
     }
 
-    function saveTheme(primary, secondary, font) {
-        localStorage.setItem('spectraTheme', JSON.stringify({ primary, secondary, font }));
+    function saveTheme(theme) {
+        localStorage.setItem('spectraTheme', JSON.stringify(theme));
+    }
+
+    function saveScaffoldSettings() {
+        localStorage.setItem('spectraScaffoldSettings', JSON.stringify({ limit: scaffoldBlockLimit }));
+    }
+
+    function loadScaffoldSettings() {
+        const savedSettings = JSON.parse(localStorage.getItem('spectraScaffoldSettings'));
+        if (savedSettings) {
+            scaffoldBlockLimit = savedSettings.limit || 3;
+        }
+        const limitInput = document.getElementById('scaffold-block-limit');
+        if (limitInput) {
+            limitInput.value = scaffoldBlockLimit;
+        }
     }
 
     function loadTheme() {
         const savedTheme = JSON.parse(localStorage.getItem('spectraTheme'));
         const theme = { ...defaultTheme, ...savedTheme };
         
-        applyTheme(theme.primary, theme.secondary, theme.font);
+        applyTheme(theme);
 
         primaryColorPicker.value = theme.primary;
         secondaryColorPicker.value = theme.secondary;
         fontSelect.value = theme.font;
+        gradientToggle.checked = theme.gradientEnabled;
+        gradientAngleSlider.value = theme.gradientAngle;
     }
 
-    primaryColorPicker.addEventListener('input', () => applyTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
-    secondaryColorPicker.addEventListener('input', () => applyTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
-    fontSelect.addEventListener('change', () => applyTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
+    function updateThemeFromUI() {
+        const theme = {
+            primary: primaryColorPicker.value,
+            secondary: secondaryColorPicker.value,
+            font: fontSelect.value,
+            gradientEnabled: gradientToggle.checked,
+            gradientAngle: gradientAngleSlider.value
+        };
+        applyTheme(theme);
+        return theme;
+    }
+
+    primaryColorPicker.addEventListener('input', () => updateThemeFromUI());
+    secondaryColorPicker.addEventListener('input', () => updateThemeFromUI());
+    fontSelect.addEventListener('change', () => updateThemeFromUI());
+    gradientToggle.addEventListener('change', () => updateThemeFromUI());
+    gradientAngleSlider.addEventListener('input', () => updateThemeFromUI());
     
-    primaryColorPicker.addEventListener('change', () => saveTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
-    secondaryColorPicker.addEventListener('change', () => saveTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
-    fontSelect.addEventListener('change', () => saveTheme(primaryColorPicker.value, secondaryColorPicker.value, fontSelect.value));
+    primaryColorPicker.addEventListener('change', () => saveTheme(updateThemeFromUI()));
+    secondaryColorPicker.addEventListener('change', () => saveTheme(updateThemeFromUI()));
+    fontSelect.addEventListener('change', () => saveTheme(updateThemeFromUI()));
+    gradientToggle.addEventListener('change', () => saveTheme(updateThemeFromUI()));
+    gradientAngleSlider.addEventListener('change', () => saveTheme(updateThemeFromUI()));
 
     themeResetBtn.addEventListener('click', () => {
         localStorage.removeItem('spectraTheme');
@@ -2099,12 +2410,23 @@ function triggerXPDuper() {
         document.getElementById('hack-bhop')?.addEventListener('change', e => {
             if (!preCheck("BHOP", e.target)) return;
             if (e.target.checked) {
-                bhopIntervalId = setInterval(bunnyHop, 10);
+                bhopIntervalId = setInterval(bunnyHop, 50);
                 showTemporaryNotification("BHOP enabled");
             } else {
                 clearInterval(bhopIntervalId);
                 bhopIntervalId = null;
                 showTemporaryNotification("BHOP disabled");
+            }
+        });
+
+        const scaffoldLimitInput = document.getElementById('scaffold-block-limit');
+        scaffoldLimitInput.addEventListener('change', () => {
+            const newValue = parseInt(scaffoldLimitInput.value, 10);
+            if (!isNaN(newValue) && newValue >= 1 && newValue <= 8) {
+                scaffoldBlockLimit = newValue;
+                saveScaffoldSettings();
+            } else {
+                scaffoldLimitInput.value = scaffoldBlockLimit;
             }
         });
 
@@ -2121,48 +2443,28 @@ function triggerXPDuper() {
 
                     const checkPlace = (x, y, z) => (playerEntity.checkTargetedBlockCanBePlacedOver([x, y, z]) || r.values(Fuxny.world)[47].call(Fuxny.world, x, y, z) === 0);
 
-                    // 1. Prioritize directly under the player
+                    let blocksPlaced = 0;
+                    const limit = scaffoldBlockLimit;
+
+                    // Prioritize under the player
                     if (checkPlace(blockX, blockY - 1, blockZ)) {
                         wangPlace([blockX, blockY - 1, blockZ]);
-                        return;
+                        blocksPlaced++;
+                        if (blocksPlaced >= limit) return;
                     }
 
-                    // 2. Determine movement direction from velocity
-                    const velocity = physState.velocity;
-                    const absX = Math.abs(velocity[0]);
-                    const absZ = Math.abs(velocity[2]);
-
-                    let primaryOffset = [0, 0];
-                    if (absX > 0.1 || absZ > 0.1) { // Check if player is moving
-                        if (absX > absZ) {
-                            primaryOffset[0] = Math.sign(velocity[0]);
-                        } else {
-                            primaryOffset[1] = Math.sign(velocity[2]);
-                        }
-                    }
-
-                    // 3. Check in the direction of movement
-                    if (primaryOffset[0] !== 0 || primaryOffset[1] !== 0) {
-                        const nx = blockX + primaryOffset[0];
-                        const nz = blockZ + primaryOffset[1];
-                        if (checkPlace(nx, blockY - 1, nz)) {
-                            wangPlace([nx, blockY - 1, nz]);
-                            return;
-                        }
-                    }
-
-                    // 4. As a last resort, check all 8 directions to prevent falling
                     const offsets = [
                         [1, 0], [-1, 0], [0, 1], [0, -1],
                         [1, 1], [1, -1], [-1, 1], [-1, -1]
                     ];
 
                     for (const [ox, oz] of offsets) {
+                        if (blocksPlaced >= limit) return;
                         const nx = blockX + ox;
                         const nz = blockZ + oz;
                         if (checkPlace(nx, blockY - 1, nz)) {
                             wangPlace([nx, blockY - 1, nz]);
-                            return;
+                            blocksPlaced++;
                         }
                     }
                 }, 50);
@@ -2296,6 +2598,15 @@ function triggerXPDuper() {
             showTemporaryNotification(`Ore ESP ${oreESPEnabled ? 'enabled' : 'disabled'}`);
         });
 
+        document.getElementById('hack-hitboxes')?.addEventListener('change', e => {
+            if (!preCheck("Hitboxes", e.target)) return;
+            hitBoxEnabled = e.target.checked;
+            for (const eId in hitboxes) {
+                const box = hitboxes[eId];
+                if (box) box.isVisible = hitBoxEnabled;
+            }
+            showTemporaryNotification(`Hitboxes ${hitBoxEnabled ? 'enabled' : 'disabled'}`);
+        });
 
         document.getElementById('hack-nametags')?.addEventListener('change', e => {
             if (!preCheck("Nametags", e.target)) return;
@@ -2349,6 +2660,19 @@ function triggerXPDuper() {
             }
         });
 
+        document.getElementById('hack-enemy-health')?.addEventListener('change', e => {
+             if (!preCheck("Enemy Health", e.target)) return;
+             if (e.target.checked) {
+                 startHealthWatcher();
+                 showTemporaryNotification("Enemy Health enabled");
+             } else {
+                if (healthWatcherInterval) clearInterval(healthWatcherInterval);
+                if (resetTimeout) clearTimeout(resetTimeout);
+                setHealthBar(100, false);
+                lastPercent = null;
+                showTemporaryNotification("Enemy Health disabled");
+             }
+        });
 
         document.getElementById('hack-night')?.addEventListener('change', e => {
             if (!preCheck("Night", e.target)) return;
@@ -2369,6 +2693,54 @@ function triggerXPDuper() {
             }
         });
 
+        document.getElementById('hack-free-cam')?.addEventListener('change', e => {
+            if (!preCheck("Free Cam", e.target)) return;
+            if (e.target.checked) {
+                enableFreeCam();
+            } else {
+                disableFreeCam();
+            }
+        });
+
+        document.getElementById('hack-bigheads')?.addEventListener('change', e => {
+            if (!preCheck("Bigheads", e.target)) return;
+            const objectData = r.values(Fuxny.rendering)[18].objectData;
+            if (e.target.checked) {
+                for (let key in objectData) {
+                    let obj = objectData[key];
+                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                        let node = obj.nodes[16];
+                        node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
+                        node.position._y = -1;
+                    }
+                }
+                bigHeadsInterval = setInterval(() => {
+                    for (let key in objectData) {
+                        let obj = objectData[key];
+                        if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                            let node = obj.nodes[16];
+                            if (node.scale._x === 1) {
+                                node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
+                                node.position._y = -1;
+                            }
+                        }
+                    }
+                }, 10000);
+                showTemporaryNotification("Bigheads enabled");
+            } else {
+                for (let key in objectData) {
+                    let obj = objectData[key];
+                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                         let node = obj.nodes[16];
+                         node.scale._x = 1; node.scale._y = 1; node.scale._z = 1;
+                         node.position._y = 0.7199999690055847;
+                    }
+                }
+                clearInterval(bigHeadsInterval);
+                bigHeadsInterval = null;
+                showTemporaryNotification("Bigheads disabled");
+            }
+        });
 
         // --- Experimental ---
         document.getElementById('hack-blink')?.addEventListener('change', e => {
@@ -2521,5 +2893,6 @@ function triggerXPDuper() {
     }
     
     loadTheme();
+    loadScaffoldSettings();
     renderLoop();
 })();
