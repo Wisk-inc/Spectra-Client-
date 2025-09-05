@@ -58,15 +58,6 @@
     let wireFramesBool = false;
 
 
-    let espEnabled = false;
-
-    let chestESPEnabled = false;
-    let oreESPEnabled = false;
-    let chestOreInterval = null;
-    let chestBoxes = {};
-
-
-
     let isSkyboxHidden = false;
 
 
@@ -96,8 +87,6 @@
     let __nullKey = null; //Entity enabled key
     let __stringKey = null; //Entity ID key "Then why didn't you just label them that?"
     let animationFrameId = null;
-    let hitBoxEnabled = false;
-    const hitboxes = {};
 
 
     let cachedNameTagParent = null;
@@ -119,11 +108,7 @@
     let scaffoldEnabled = false;
     let scaffoldIntervalId = null;
 
-    let enemyHealthGuiEnabled = false;
-    let healthWatcherInterval = null;
-    let lastPercent = null;
-    let lastChangeTime = Date.now();
-    let resetTimeout = null;
+
 
 
     let eIdKey = null;
@@ -142,12 +127,7 @@
     let spaceVid;
     let fadeVolumeInterval;
     let spaceHeld = false;
-    let bigHeadsEnabled = false;
     let antiBanEnabled = false;
-
-
-    const scannedChunks = new Set();
-    let chunkDataField = null;
 
     // ETC
     let playerKey = null;
@@ -157,9 +137,7 @@
     let playerEntity = null;
     let skyboxEntity = null;
     let skyboxMesh = null;
-    let bigHeadsInterval = null;
     let targetFinderId = null;
-    let setHealthBar = null;
     let playerInventoryParent = null;
 
 
@@ -338,138 +316,6 @@
         }, duration);
     }
 
-    function clearESPBoxes() {
-        for (const key in chestBoxes) {
-            for (const {
-                    mesh,
-                    id
-                } of chestBoxes[key]) {
-                mesh.dispose();
-                Fuxny.entities.deleteEntity(id);
-            }
-        }
-        scannedChunks.clear();
-        chestBoxes = {};
-    }
-
-    function reverseIndex(i, stride) {
-        const x = Math.floor(i / stride[0]);
-        const remX = i % stride[0];
-        const y = Math.floor(remX / stride[1]);
-        const z = remX % stride[1];
-        return [x, y, z];
-    }
-
-    function getChunkKey(chunk) {
-        const [wx, wy, wz] = chunk.pos || [0, 0, 0];
-        const cx = Math.floor(wx / 32);
-        const cy = Math.floor(wy / 32);
-        const cz = Math.floor(wz / 32);
-        return `${cx}|${cy}|${cz}|overworld`;
-    }
-
-    function scanChunk(chunk, blockIDs) {
-        const blockData = chunk[chunkDataField];
-        if (!blockData) return;
-
-        const {
-            data,
-            stride
-        } = blockData;
-
-        const pos = chunk.pos || [0, 0, 0];
-        if (!data || !stride) return;
-
-        const chunkKey = getChunkKey(chunk);
-        for (let i = 0; i < data.length; i++) {
-            const blockID = data[i];
-            if (!blockIDs.includes(blockID)) continue;
-
-
-
-
-            const [x, y, z] = reverseIndex(i, stride);
-            const worldX = pos[0] + x + 0.5;
-            const worldY = pos[1] + y + 0.5;
-            const worldZ = pos[2] + z + 0.5;
-
-            const mesh = Fuxny.Lion.Mesh.CreateBox("espbox", 0.5, false, 1, Fuxny.Lion.scene);
-            mesh.position.set(worldX, worldY, worldZ);
-            mesh.renderingGroupId = 1;
-
-            mesh.material = new Fuxny.Lion.StandardMaterial("mat", Fuxny.Lion.scene)
-
-            const id = Fuxny.entities.add([worldX, worldY, worldZ], null, null, mesh);
-            if (!chestBoxes[chunkKey]) chestBoxes[chunkKey] = [];
-            chestBoxes[chunkKey].push({
-                mesh,
-                id
-            });
-
-
-            if ([204, 205, 206, 207].includes(blockID)) {
-                console.log("FOUNDCHEST")
-
-                mesh.material.diffuseColor = new Fuxny.Lion.Color3(1, 0.5, 0); // orange
-                mesh.material.emissiveColor = new Fuxny.Lion.Color3(1, 0.5, 0); // makes it glow orange
-            }
-            if (blockID === 45) {
-                mesh.material.diffuseColor = new Fuxny.Lion.Color3(0, 0, 1); // blue
-                mesh.material.emissiveColor = new Fuxny.Lion.Color3(0, 0, 1); // makes it glow blue
-            }
-
-            if (blockID === 465) {
-                mesh.material.diffuseColor = new Fuxny.Lion.Color3(0.7, 0.5, 1); // pale purple
-                mesh.material.emissiveColor = new Fuxny.Lion.Color3(0.7, 0.5, 1); // makes it glow pale purple
-            }
-
-
-
-
-        }
-    }
-
-    function scanAllChunks() {
-        if (!Fuxny?.world || !Fuxny?.world?.[Fuxny.impKey]?.hash) return;
-        const chunkHash = Fuxny.world[Fuxny.impKey].hash;
-        // Step 1: Remove boxes for chunks no longer loaded
-        for (const scannedKey of scannedChunks) {
-            if (!(scannedKey in chestBoxes)) continue;
-
-            if (!Object.values(chunkHash).some(chunk => getChunkKey(chunk) === scannedKey)) {
-                // Delete all meshes for this chunk
-                for (const {
-                        mesh,
-                        id
-                    } of chestBoxes[scannedKey]) {
-                    mesh.dispose(); // remove from scene
-                    Fuxny.entities.deleteEntity(id); // remove from entity system if needed
-                }
-                delete chestBoxes[scannedKey];
-                scannedChunks.delete(scannedKey);
-            }
-        }
-
-        // Step 2: Scan newly loaded chunks
-        for (const chunkKey in chunkHash) {
-
-            const chunk = chunkHash[chunkKey];
-            if (!chunkDataField) {
-                autoDetectChunkDataField(chunk);
-                if (!chunkDataField) continue; // Skip if still not found
-            }
-
-            const blockData = chunk[chunkDataField];
-            if (!blockData?.data || !blockData.stride || !chunk.pos) continue;
-
-
-            const key = getChunkKey(chunk);
-            if (scannedChunks.has(key)) continue;
-            scannedChunks.add(key);
-            if (chestESPEnabled) scanChunk(chunk, [204, 205, 206, 207]);
-            if (oreESPEnabled) scanChunk(chunk, [44, 45, 465, 50]);
-        }
-    }
 
     function stopMoving() {
         if (moveInterval) {
@@ -1221,162 +1067,7 @@ function triggerXPDuper() {
     }
 }
 
-    function makeHitboxes() {
-        if (!injectedBool || !Fuxny.rendering) return;
 
-        const rendering = r.values(Fuxny.rendering)[18];
-        if (!rendering) return;
-
-        const playerIds = n.noa.playerList;
-        if (!playerIds) return;
-
-        const activeEIds = new Set(playerIds);
-
-        // Create hitboxes for new players
-        for (const playerId of playerIds) {
-            if (hitboxes[playerId]) continue; // Skip if hitbox already exists
-
-            let newBox_00 = Fuxny.Lion.Mesh.CreateBox("hitbox_mesh_" + playerId, 1, false, 1, Fuxny.Lion.scene);
-            newBox_00.renderingGroupId = 2;
-
-            newBox_00.material = new Fuxny.Lion.StandardMaterial("mat", Fuxny.Lion.scene);
-            newBox_00.material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
-            newBox_00.material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
-            newBox_00.name = '_hitbox';
-            newBox_00.id = '__hitbox_' + playerId;
-
-            let defaultPosition = new newBox_00.position.constructor(0, 0.32, 0);
-            newBox_00.position = defaultPosition.clone();
-            newBox_00._scaling._y = 2.2;
-            newBox_00.material.alpha = 0.5;
-            newBox_00.isVisible = hitBoxEnabled;
-
-            const transformNodeKey = playerId.toString();
-            rendering.attachTransformNode(newBox_00, transformNodeKey, 13);
-            r.values(Fuxny.rendering)[27].call(Fuxny.rendering, newBox_00);
-
-            Object.defineProperty(newBox_00._nodeDataStorage, '_isEnabled', {
-                get: () => true,
-                set: (v) => {},
-                configurable: false
-            });
-
-            hitboxes[playerId] = newBox_00;
-        }
-
-        // Cleanup hitboxes for players who have left
-        for (const eId in hitboxes) {
-            if (!activeEIds.has(parseInt(eId))) {
-                hitboxes[eId]?.dispose();
-                delete hitboxes[eId];
-            }
-        }
-
-        // Toggle visibility for all active hitboxes
-        for (const eId in hitboxes) {
-            if (hitboxes[eId]) {
-                hitboxes[eId].isVisible = hitBoxEnabled;
-            }
-        }
-    }
-
-    function startHealthWatcher() {
-        if (healthWatcherInterval) clearInterval(healthWatcherInterval);
-
-        healthWatcherInterval = setInterval(() => {
-            if (!injectedBool || !lastClosestId) {
-                setHealthBar(100, false); // Hide bar if no target
-                return;
-            }
-
-            const state = Fuxny.entities.getState(lastClosestId, "genericLifeformState");
-            if (!state || !state.isAlive) {
-                setHealthBar(100, false);
-                return;
-            }
-            
-            // This is an assumption based on common game engine patterns.
-            // The old method was obfuscated and has broken.
-            const health = state.health;
-            const maxHealth = state.maxHealth;
-
-            if (typeof health === 'number' && typeof maxHealth === 'number' && maxHealth > 0) {
-                const percent = (health / maxHealth) * 100;
-                setHealthBar(percent, true);
-            } else {
-                setHealthBar(100, false);
-            }
-
-        }, 300);
-    }
-
-    (() => {
-        // Remove if already present
-        const old = document.getElementById("vertical-health-bar");
-        if (old) old.remove();
-
-        // Create bar container
-        const container = document.createElement("div");
-        container.id = "vertical-health-bar";
-        Object.assign(container.style, {
-            position: "fixed",
-            left: "calc(50% - 200px)", // 100px left of center
-            top: "50%",
-            transform: "translateY(-50%)",
-            width: "4px",
-            height: "200px",
-            background: "#000",
-            border: "2px solid black",
-            zIndex: 120,
-            pointerEvents: "none",
-            display: "flex",
-            alignItems: "flex-end",
-            overflow: "hidden"
-        });
-
-        // Create fill element
-        const fill = document.createElement("div");
-        Object.assign(fill.style, {
-            width: "100%",
-            height: "100%",
-            background: "limegreen",
-            transform: "scaleY(1)",
-            transformOrigin: "bottom",
-            transition: "transform 0.2s ease, background 0.2s ease", // <-- add comma here
-        });
-
-        container.appendChild(fill);
-        document.body.appendChild(container);
-
-        // Function to compute smooth gradient color from green → red
-        function getHealthColor(health) {
-            const ratio = health / 100;
-
-            if (ratio > 0.5) {
-                // Bright green → orange
-                const t = (ratio - 0.5) * 2;
-                const r = Math.round(255 * (1 - t));
-                const g = 255;
-                return `rgb(${r}, ${g}, 0)`; // green to yellow to orange
-            } else {
-                // Orange → red
-                const t = ratio * 2;
-                const r = 255;
-                const g = Math.round(255 * t);
-                return `rgb(${r}, ${g}, 0)`; // orange to red
-            }
-        }
-
-
-        // Global health setter and show/hide toggle
-        setHealthBar = function(health, show = true) {
-            const clamped = Math.max(0, Math.min(health, 100));
-            fill.style.transform = `scaleY(${clamped / 100})`;
-            fill.style.background = getHealthColor(clamped);
-            container.style.display = show ? "flex" : "none";
-        };
-        setHealthBar(100, false)
-    })();
 
 
     function performInjection() {
@@ -1474,31 +1165,6 @@ function triggerXPDuper() {
             };
             playerInventoryParent = Fuxny.entities[Fuxny.impKey].inventory.list[0].opWrapper
 
-            function autoDetectChunkDataField(chunk) {
-                for (const key of Object.keys(chunk)) {
-                    const val = chunk[key];
-                    if (!val) continue;
-
-                    if (
-                        typeof val === "object" &&
-                        Array.isArray(val.stride) &&
-                        val.stride.length === 3 &&
-                        (
-                            Array.isArray(val.data) ||
-                            ArrayBuffer.isView(val.data) // covers Uint16Array etc.
-                        )
-                    ) {
-                        console.log("✅ Detected chunk data field:", key);
-                        chunkDataField = key;
-                        return key;
-                    }
-                }
-
-                console.warn("❌ Failed to auto-detect chunk data field");
-                return null;
-            }
-
-            autoDetectChunkDataField(Object.values(Fuxny.world[Fuxny.impKey].hash)[0]);
 
 
             const maybeEntity = r.values(r.values(Fuxny.entities[Fuxny.impKey])[22].list[0])[1];
@@ -1679,17 +1345,6 @@ function triggerXPDuper() {
                     }
                 }
                 
-                if (lastClosestId !== closestId) {
-                    if (hitboxes[lastClosestId]) { // Revert old target color
-                         hitboxes[lastClosestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
-                         hitboxes[lastClosestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
-                    }
-                    if (hitboxes[closestId]) { // Highlight new target
-                        hitboxes[closestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 0, 0);
-                        hitboxes[closestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 0, 0);
-                    }
-                }
-
                 lastClosestId = closestId;
 
             }, 200);
@@ -1697,7 +1352,6 @@ function triggerXPDuper() {
         inject();
         setupKillAuraBox();
         startTargetFinder();
-        setInterval(makeHitboxes, 1000);
     }
 
     waitForElement('div.MainLoadingState.FullyFancyText', (el) => {
@@ -1966,14 +1620,8 @@ function triggerXPDuper() {
 
             <div class="spectra-category hidden" data-tab-content="visuals">
                 <div class="spectra-category-title">Visuals</div>
-                <div class="spectra-toggle"><label>ESP</label><input type="checkbox" id="hack-esp"></div>
-                <div class="spectra-toggle"><label>Chest ESP</label><input type="checkbox" id="hack-chest-esp"></div>
-                <div class="spectra-toggle"><label>Ore ESP</label><input type="checkbox" id="hack-ore-esp"></div>
-                <div class="spectra-toggle"><label>Hitboxes</label><input type="checkbox" id="hack-hitboxes"></div>
                 <div class="spectra-toggle"><label>Nametags</label><input type="checkbox" id="hack-nametags"></div>
-                <div class="spectra-toggle"><label>Enemy Health</label><input type="checkbox" id="hack-enemy-health"></div>
                 <div class="spectra-toggle"><label>Night</label><input type="checkbox" id="hack-night"></div>
-                <div class="spectra-toggle"><label>Bigheads</label><input type="checkbox" id="hack-bigheads"></div>
             </div>
 
             <div class="spectra-category hidden" data-tab-content="experimental">
@@ -2296,17 +1944,32 @@ function triggerXPDuper() {
                 scaffoldIntervalId = setInterval(() => {
                     const pos = Fuxny.entities.getState(1, 'position').position;
                     if (!pos || !playerEntity || playerEntity.heldItemState.heldType !== "CubeBlock") return;
-                    const exactX = pos[0], exactZ = pos[2];
-                    const blockX = Math.floor(exactX), blockY = Math.floor(pos[1]), blockZ = Math.floor(exactZ);
+
+                    const blockX = Math.floor(pos[0]);
+                    const blockY = Math.floor(pos[1]);
+                    const blockZ = Math.floor(pos[2]);
+
                     const checkPlace = (x, y, z) => (playerEntity.checkTargetedBlockCanBePlacedOver([x, y, z]) || r.values(Fuxny.world)[47].call(Fuxny.world, x, y, z) === 0);
-                    if (checkPlace(blockX, blockY - 1, blockZ)) { wangPlace([blockX, blockY - 1, blockZ]); return; }
-                    const dx = exactX - blockX, dz = exactZ - blockZ;
-                    const offsets = [];
-                    if (dx < 0.3) offsets.push([-1, 0]); if (dx > 0.7) offsets.push([1, 0]);
-                    if (dz < 0.3) offsets.push([0, -1]); if (dz > 0.7) offsets.push([0, 1]);
+
+                    // 1. Prioritize directly under the player
+                    if (checkPlace(blockX, blockY - 1, blockZ)) {
+                        wangPlace([blockX, blockY - 1, blockZ]);
+                        return; // Block placed, exit for this interval
+                    }
+
+                    // 2. If that fails, check all 8 surrounding blocks (auto-fallback/instant retry)
+                    const offsets = [
+                        [1, 0], [-1, 0], [0, 1], [0, -1], // Cardinal
+                        [1, 1], [1, -1], [-1, 1], [-1, -1]  // Diagonal
+                    ];
+
                     for (const [ox, oz] of offsets) {
-                        const nx = blockX + ox, nz = blockZ + oz;
-                        if (checkPlace(nx, blockY - 1, nz)) { wangPlace([nx, blockY - 1, nz]); return; }
+                        const nx = blockX + ox;
+                        const nz = blockZ + oz;
+                        if (checkPlace(nx, blockY - 1, nz)) {
+                            wangPlace([nx, blockY - 1, nz]);
+                            return; // Block placed, exit for this interval
+                        }
                     }
                 }, 50);
                 showTemporaryNotification("Scaffold enabled");
@@ -2399,55 +2062,6 @@ function triggerXPDuper() {
         });
 
         // --- Visuals ---
-        document.getElementById('hack-esp')?.addEventListener('change', e => {
-            if (!preCheck("ESP", e.target)) return;
-            espEnabled = e.target.checked;
-            const groupId = espEnabled ? 2 : 0;
-            if (Array.isArray(r.values(Fuxny.rendering)[18].thinMeshes)) {
-                for (const thinMesh of r.values(Fuxny.rendering)[18].thinMeshes) {
-                    if (thinMesh?.mesh && typeof thinMesh.mesh.renderingGroupId === "number") {
-                        thinMesh.mesh.renderingGroupId = groupId;
-                    }
-                }
-            }
-            showTemporaryNotification(`ESP ${espEnabled ? 'enabled' : 'disabled'}`);
-        });
-
-        document.getElementById('hack-chest-esp')?.addEventListener('change', e => {
-            if (!preCheck("Chest ESP", e.target)) return;
-            chestESPEnabled = e.target.checked;
-            if (chestESPEnabled || oreESPEnabled) {
-                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
-                scanAllChunks();
-            } else {
-                if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
-                clearESPBoxes();
-            }
-            showTemporaryNotification(`Chest ESP ${chestESPEnabled ? 'enabled' : 'disabled'}`);
-        });
-
-        document.getElementById('hack-ore-esp')?.addEventListener('change', e => {
-            if (!preCheck("Ore ESP", e.target)) return;
-            oreESPEnabled = e.target.checked;
-            if (chestESPEnabled || oreESPEnabled) {
-                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
-                scanAllChunks();
-            } else {
-                if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
-                clearESPBoxes();
-            }
-            showTemporaryNotification(`Ore ESP ${oreESPEnabled ? 'enabled' : 'disabled'}`);
-        });
-
-        document.getElementById('hack-hitboxes')?.addEventListener('change', e => {
-            if (!preCheck("Hitboxes", e.target)) return;
-            hitBoxEnabled = e.target.checked;
-            for (const eId in hitboxes) {
-                const box = hitboxes[eId];
-                if (box) box.isVisible = hitBoxEnabled;
-            }
-            showTemporaryNotification(`Hitboxes ${hitBoxEnabled ? 'enabled' : 'disabled'}`);
-        });
 
         document.getElementById('hack-nametags')?.addEventListener('change', e => {
             if (!preCheck("Nametags", e.target)) return;
@@ -2501,19 +2115,6 @@ function triggerXPDuper() {
             }
         });
 
-        document.getElementById('hack-enemy-health')?.addEventListener('change', e => {
-             if (!preCheck("Enemy Health", e.target)) return;
-             if (e.target.checked) {
-                 startHealthWatcher();
-                 showTemporaryNotification("Enemy Health enabled");
-             } else {
-                if (healthWatcherInterval) clearInterval(healthWatcherInterval);
-                if (resetTimeout) clearTimeout(resetTimeout);
-                setHealthBar(100, false);
-                lastPercent = null;
-                showTemporaryNotification("Enemy Health disabled");
-             }
-        });
 
         document.getElementById('hack-night')?.addEventListener('change', e => {
             if (!preCheck("Night", e.target)) return;
@@ -2534,45 +2135,6 @@ function triggerXPDuper() {
             }
         });
 
-        document.getElementById('hack-bigheads')?.addEventListener('change', e => {
-            if (!preCheck("Bigheads", e.target)) return;
-            const objectData = r.values(Fuxny.rendering)[18].objectData;
-            if (e.target.checked) {
-                for (let key in objectData) {
-                    let obj = objectData[key];
-                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
-                        let node = obj.nodes[16];
-                        node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
-                        node.position._y = -1;
-                    }
-                }
-                bigHeadsInterval = setInterval(() => {
-                    for (let key in objectData) {
-                        let obj = objectData[key];
-                        if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
-                            let node = obj.nodes[16];
-                            if (node.scale._x === 1) {
-                                node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
-                                node.position._y = -1;
-                            }
-                        }
-                    }
-                }, 10000);
-                showTemporaryNotification("Bigheads enabled");
-            } else {
-                for (let key in objectData) {
-                    let obj = objectData[key];
-                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
-                         let node = obj.nodes[16];
-                         node.scale._x = 1; node.scale._y = 1; node.scale._z = 1;
-                         node.position._y = 0.7199999690055847;
-                    }
-                }
-                clearInterval(bigHeadsInterval);
-                bigHeadsInterval = null;
-                showTemporaryNotification("Bigheads disabled");
-            }
-        });
 
         // --- Experimental ---
         document.getElementById('hack-blink')?.addEventListener('change', e => {
