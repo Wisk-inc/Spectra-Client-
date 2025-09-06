@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Spectra Client (Hacks Extracted)
+// @name         Spectra premium
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  All hacks from pottery009.txt with the Spectra Client UI
@@ -1546,7 +1546,10 @@ function triggerXPDuper() {
         experimental: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
         settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
         ai: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="12" width="16" height="8" rx="2"/><path d="M2 12h20"/><path d="M17.5 12V8h-3v4"/></svg>`,
-        credits: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
+        credits: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+        notes: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
+        antiAfk: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20.5c.5-.5.8-1.2.8-2s-.3-1.5-.8-2c-.5-.5-1.2-.8-2-.8s-1.5.3-2 .8c-.5.5-.8 1.2-.8 2s.3 1.5.8 2c.5.5 1.2.8 2 .8s1.5-.3 2-.8zM18 8h-2.5c-1-1-1.5-2.5-1.5-4S13 0 14.5 0s2.5 1 2.5 2.5c0 .4-.1.8-.2 1.2M4 22V8h14v9.5c0 1.2-.8 2.3-2 2.8H6c-1.2-.5-2-1.6-2-2.8z"/></svg>`,
+        ping: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>`
     };
 
     // --- STYLES ---
@@ -1799,6 +1802,9 @@ function triggerXPDuper() {
             <div class="spectra-tab" data-tab="settings">${icons.settings}<span>Settings</span></div>
             <div class="spectra-tab" data-tab="ai">${icons.ai}<span>AI</span></div>
             <div class="spectra-tab" data-tab="credits">${icons.credits}<span>Credits</span></div>
+            <div class="spectra-tab" data-tab="notes">${icons.notes}<span>Notes</span></div>
+            <div class="spectra-tab" data-tab="anti-afk">${icons.antiAfk}<span>Anti AFK</span></div>
+            <div class="spectra-tab" data-tab="ping">${icons.ping}<span>Ping & FPS</span></div>
         </div>
         <div id="spectra-content">
             <div class="spectra-category" data-tab-content="main">
@@ -1919,6 +1925,23 @@ function triggerXPDuper() {
                     <span class="credit-badge admin-badge">Admin</span>
                     <span class="credit-badge helper-badge">Assistant</span>
                 </div>
+            </div>
+
+            <div class="spectra-category hidden" data-tab-content="notes">
+                <div class="spectra-category-title">Notes</div>
+                <textarea id="spectra-notes-textarea" style="width: 100%; height: 200px; background: #222; color: white; border: 1px solid #555; padding: 8px; box-sizing: border-box; resize: none;"></textarea>
+            </div>
+
+            <div class="spectra-category hidden" data-tab-content="anti-afk">
+                <div class="spectra-category-title">Anti AFK</div>
+                <div class="spectra-toggle"><label>Enable Anti AFK</label><input type="checkbox" id="hack-anti-afk"></div>
+            </div>
+
+            <div class="spectra-category hidden" data-tab-content="ping">
+                <div class="spectra-category-title">Performance</div>
+                <div class="spectra-setting"><label>FPS:</label><span id="fps-display">...</span></div>
+                <div class="spectra-setting"><label>Ping:</label><span id="ping-display">...</span></div>
+                <div class="spectra-setting"><label>CPS:</label><span id="cps-display">...</span></div>
             </div>
         </div>
     `;
@@ -2598,6 +2621,21 @@ function triggerXPDuper() {
             performInjection();
         });
 
+        let antiAfkInterval = null;
+        document.getElementById('hack-anti-afk')?.addEventListener('change', e => {
+            if (!preCheck("Anti AFK", e.target)) return;
+            if (e.target.checked) {
+                antiAfkInterval = setInterval(() => {
+                    D.fakeMouseEvent('mousemove');
+                }, 10000); // every 10 seconds
+                showTemporaryNotification("Anti AFK enabled");
+            } else {
+                if (antiAfkInterval) clearInterval(antiAfkInterval);
+                antiAfkInterval = null;
+                showTemporaryNotification("Anti AFK disabled");
+            }
+        });
+
         function find_ores_data() {
             if (!oreESPEnabled || !Fuxny.entities) return [];
 
@@ -2772,7 +2810,7 @@ function triggerXPDuper() {
 
                 const systemMessage = {
                     role: 'system',
-                    content: `You are a helpful in-game assistant. Current game state: ${JSON.stringify(currentGameState)}`
+                    content: `You are a helpful in-game assistant. If the user asks for information that is unavailable in the current game state (e.g., an empty list of players or ores), inform them that you cannot see the requested information at the moment. Current game state: ${JSON.stringify(currentGameState)}`
                 };
 
                 const completion = await puter.ai.chat([systemMessage, ...chatHistory], { tools });
@@ -2838,13 +2876,53 @@ function triggerXPDuper() {
     setupHackEventListeners();
 
     const modulesToRender = [];
+    const fpsDisplay = document.getElementById('fps-display');
     function renderLoop() {
         for (const module of modulesToRender) {
             module.onRender();
         }
+        if (fpsDisplay && Fuxny?.noa?.rendering) {
+            fpsDisplay.textContent = Math.round(Fuxny.noa.rendering.fps);
+        }
         requestAnimationFrame(renderLoop);
     }
     
+    const notesTextarea = document.getElementById('spectra-notes-textarea');
+    if (notesTextarea) {
+        notesTextarea.addEventListener('input', () => {
+            localStorage.setItem('spectraNotes', notesTextarea.value);
+        });
+        const savedNotes = localStorage.getItem('spectraNotes');
+        if (savedNotes) {
+            notesTextarea.value = savedNotes;
+        }
+    }
+
+    // --- Performance Display ---
+    const pingDisplay = document.getElementById('ping-display');
+    const cpsDisplay = document.getElementById('cps-display');
+    let clicks = 0;
+
+    if (cpsDisplay) {
+        document.addEventListener('mousedown', () => {
+            clicks++;
+        });
+        setInterval(() => {
+            cpsDisplay.textContent = clicks;
+            clicks = 0;
+        }, 1000);
+    }
+
+    if (pingDisplay) {
+        setInterval(() => {
+            if (colyRoom?.connection) {
+                pingDisplay.textContent = `${colyRoom.connection.rtt}ms`;
+            } else {
+                pingDisplay.textContent = '...';
+            }
+        }, 1000);
+    }
+
     loadTheme();
     renderLoop();
 })();
