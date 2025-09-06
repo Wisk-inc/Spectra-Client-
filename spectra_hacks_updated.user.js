@@ -1638,6 +1638,7 @@ function triggerXPDuper() {
             flex-direction: column;
             align-items: stretch;
             padding: 12px 0;
+            overflow-y: auto;
         }
 
         /* Logo blend */
@@ -2597,33 +2598,50 @@ function triggerXPDuper() {
             performInjection();
         });
 
+        function find_ores_data() {
+            if (!oreESPEnabled || !Fuxny.entities) return [];
+
+            const ores = [];
+            for (const chunkKey in chestBoxes) {
+                for (const { mesh } of chestBoxes[chunkKey]) {
+                    const color = mesh.material.emissiveColor;
+                    let oreType = null;
+                    if (color.r === 0 && color.g === 0 && color.b === 1) oreType = 'diamond';
+                    else if (color.r === 0.7 && color.g === 0.5 && color.b === 1) oreType = 'emerald';
+
+                    if(oreType) {
+                        const orePos = mesh.position.asArray();
+                        ores.push({type: oreType, position: [Math.round(orePos[0]), Math.round(orePos[1]), Math.round(orePos[2])]});
+                    }
+                }
+            }
+            return ores;
+        }
+
         function findNearestOre() {
             if (!oreESPEnabled || !Fuxny.entities) return null;
-
             const myPos = Fuxny.entities.getState(1, 'position').position;
             let nearestOre = null;
             let minDistance = Infinity;
 
-            for (const chunkKey in chestBoxes) {
-                for (const { mesh, id } of chestBoxes[chunkKey]) {
-                    const color = mesh.material.emissiveColor;
-                    if (color.r === 0 && color.g === 0 && color.b === 1) { // Blue for diamond
-                        const orePos = mesh.position.asArray();
-                        const dist = S.distanceBetweenSqrt(myPos, orePos);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            nearestOre = { position: orePos, distance: dist };
-                        }
+            const allOres = find_ores_data();
+            for (const ore of allOres) {
+                if (ore.type === 'diamond') {
+                    const dist = S.distanceBetweenSqrt(myPos, ore.position);
+                    if (dist < minDistance) {
+                        minDistance = dist;
+                        nearestOre = { position: ore.position, distance: dist };
                     }
                 }
             }
             return nearestOre;
         }
 
-        function get_player_list() {
+        function get_player_list_data() {
             const players = [];
+            if (!Fuxny?.bloxd?.entityNames || !Fuxny?.entities) return players;
             for (const id in Fuxny.bloxd.entityNames) {
-                if (id === "1") continue; // Skip self
+                if (id === "1") continue;
                 const name = Fuxny.bloxd.entityNames[id].entityName;
                 const pos = Fuxny.entities.getState(id, 'position')?.position;
                 if (name && pos) {
@@ -2633,23 +2651,30 @@ function triggerXPDuper() {
                     });
                 }
             }
-            return JSON.stringify(players);
+            return players;
         }
 
-        function find_chests() {
-            if (!chestESPEnabled || !Fuxny.entities) return null;
+        function get_player_list() {
+            return JSON.stringify(get_player_list_data());
+        }
 
+        function find_chests_data() {
+            if (!chestESPEnabled || !Fuxny.entities) return [];
             const chests = [];
             for (const chunkKey in chestBoxes) {
-                for (const { mesh, id } of chestBoxes[chunkKey]) {
+                for (const { mesh } of chestBoxes[chunkKey]) {
                     const color = mesh.material.emissiveColor;
-                    if (color.r === 1 && color.g === 0.5 && color.b === 0) { // Orange for chests
+                    if (color.r === 1 && color.g === 0.5 && color.b === 0) {
                         const chestPos = mesh.position.asArray();
                         chests.push([Math.round(chestPos[0]), Math.round(chestPos[1]), Math.round(chestPos[2])]);
                     }
                 }
             }
-            return JSON.stringify(chests);
+            return chests;
+        }
+
+        function find_chests() {
+            return JSON.stringify(find_chests_data());
         }
 
         function toggle_feature(featureName, enabled) {
@@ -2747,7 +2772,7 @@ function triggerXPDuper() {
 
                 const systemMessage = {
                     role: 'system',
-                    content: `Current game state: ${JSON.stringify(currentGameState)}`
+                    content: `You are a helpful in-game assistant. Current game state: ${JSON.stringify(currentGameState)}`
                 };
 
                 const completion = await puter.ai.chat([systemMessage, ...chatHistory], { tools });
@@ -2797,11 +2822,16 @@ function triggerXPDuper() {
 
         setInterval(() => {
             if (!injectedBool) return;
-            currentGameState = {
-                playerPosition: Fuxny.entities.getState(1, 'position').position,
-                players: JSON.parse(get_player_list()),
-                nearestOre: findNearestOre()
-            };
+            try {
+                currentGameState = {
+                    playerPosition: Fuxny.entities.getState(1, 'position').position,
+                    players: get_player_list_data(),
+                    ores: find_ores_data(),
+                    chests: find_chests_data(),
+                };
+            } catch (e) {
+                console.error("Error updating game state:", e);
+            }
         }, 1000);
     }
 
