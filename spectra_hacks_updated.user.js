@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Spectra premium
+// @name         Spectra Client (Hacks Extracted)
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  All hacks from pottery009.txt with the Spectra Client UI
@@ -10,10 +10,6 @@
 
 (function() {
     'use strict';
-    const puterScript = document.createElement('script');
-    puterScript.src = 'https://js.puter.com/v2/';
-    puterScript.async = true;
-    document.head.appendChild(puterScript);
 
     //__START__HACK_CODE_FROM_POTTERY009_TXT______________________________________________
 
@@ -100,6 +96,8 @@
     let __nullKey = null; //Entity enabled key
     let __stringKey = null; //Entity ID key "Then why didn't you just label them that?"
     let animationFrameId = null;
+    let hitBoxEnabled = false;
+    const hitboxes = {};
 
 
     let cachedNameTagParent = null;
@@ -121,6 +119,12 @@
     let scaffoldEnabled = false;
     let scaffoldIntervalId = null;
 
+    let enemyHealthGuiEnabled = false;
+    let healthWatcherInterval = null;
+    let lastPercent = null;
+    let lastChangeTime = Date.now();
+    let resetTimeout = null;
+
 
     let eIdKey = null;
     let targetEntity = null;
@@ -138,8 +142,8 @@
     let spaceVid;
     let fadeVolumeInterval;
     let spaceHeld = false;
-    let antiBanEnabled = true;
-    let isScriptPaused = false;
+    let bigHeadsEnabled = false;
+    let antiBanEnabled = false;
 
 
     const scannedChunks = new Set();
@@ -153,7 +157,9 @@
     let playerEntity = null;
     let skyboxEntity = null;
     let skyboxMesh = null;
+    let bigHeadsInterval = null;
     let targetFinderId = null;
+    let setHealthBar = null;
     let playerInventoryParent = null;
 
 
@@ -1215,6 +1221,162 @@ function triggerXPDuper() {
     }
 }
 
+    function makeHitboxes() {
+        if (!injectedBool || !Fuxny.rendering) return;
+
+        const rendering = r.values(Fuxny.rendering)[18];
+        if (!rendering) return;
+
+        const playerIds = n.noa.playerList;
+        if (!playerIds) return;
+
+        const activeEIds = new Set(playerIds);
+
+        // Create hitboxes for new players
+        for (const playerId of playerIds) {
+            if (hitboxes[playerId]) continue; // Skip if hitbox already exists
+
+            let newBox_00 = Fuxny.Lion.Mesh.CreateBox("hitbox_mesh_" + playerId, 1, false, 1, Fuxny.Lion.scene);
+            newBox_00.renderingGroupId = 2;
+
+            newBox_00.material = new Fuxny.Lion.StandardMaterial("mat", Fuxny.Lion.scene);
+            newBox_00.material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
+            newBox_00.material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
+            newBox_00.name = '_hitbox';
+            newBox_00.id = '__hitbox_' + playerId;
+
+            let defaultPosition = new newBox_00.position.constructor(0, 0.32, 0);
+            newBox_00.position = defaultPosition.clone();
+            newBox_00._scaling._y = 2.2;
+            newBox_00.material.alpha = 0.5;
+            newBox_00.isVisible = hitBoxEnabled;
+
+            const transformNodeKey = playerId.toString();
+            rendering.attachTransformNode(newBox_00, transformNodeKey, 13);
+            r.values(Fuxny.rendering)[27].call(Fuxny.rendering, newBox_00);
+
+            Object.defineProperty(newBox_00._nodeDataStorage, '_isEnabled', {
+                get: () => true,
+                set: (v) => {},
+                configurable: false
+            });
+
+            hitboxes[playerId] = newBox_00;
+        }
+
+        // Cleanup hitboxes for players who have left
+        for (const eId in hitboxes) {
+            if (!activeEIds.has(parseInt(eId))) {
+                hitboxes[eId]?.dispose();
+                delete hitboxes[eId];
+            }
+        }
+
+        // Toggle visibility for all active hitboxes
+        for (const eId in hitboxes) {
+            if (hitboxes[eId]) {
+                hitboxes[eId].isVisible = hitBoxEnabled;
+            }
+        }
+    }
+
+    function startHealthWatcher() {
+        if (healthWatcherInterval) clearInterval(healthWatcherInterval);
+
+        healthWatcherInterval = setInterval(() => {
+            if (!injectedBool || !lastClosestId) {
+                setHealthBar(100, false); // Hide bar if no target
+                return;
+            }
+
+            const state = Fuxny.entities.getState(lastClosestId, "genericLifeformState");
+            if (!state || !state.isAlive) {
+                setHealthBar(100, false);
+                return;
+            }
+
+            // This is an assumption based on common game engine patterns.
+            // The old method was obfuscated and has broken.
+            const health = state.health;
+            const maxHealth = state.maxHealth;
+
+            if (typeof health === 'number' && typeof maxHealth === 'number' && maxHealth > 0) {
+                const percent = (health / maxHealth) * 100;
+                setHealthBar(percent, true);
+            } else {
+                setHealthBar(100, false);
+            }
+
+        }, 300);
+    }
+
+    (() => {
+        // Remove if already present
+        const old = document.getElementById("vertical-health-bar");
+        if (old) old.remove();
+
+        // Create bar container
+        const container = document.createElement("div");
+        container.id = "vertical-health-bar";
+        Object.assign(container.style, {
+            position: "fixed",
+            left: "calc(50% - 200px)", // 100px left of center
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: "4px",
+            height: "200px",
+            background: "#000",
+            border: "2px solid black",
+            zIndex: 120,
+            pointerEvents: "none",
+            display: "flex",
+            alignItems: "flex-end",
+            overflow: "hidden"
+        });
+
+        // Create fill element
+        const fill = document.createElement("div");
+        Object.assign(fill.style, {
+            width: "100%",
+            height: "100%",
+            background: "limegreen",
+            transform: "scaleY(1)",
+            transformOrigin: "bottom",
+            transition: "transform 0.2s ease, background 0.2s ease", // <-- add comma here
+        });
+
+        container.appendChild(fill);
+        document.body.appendChild(container);
+
+        // Function to compute smooth gradient color from green → red
+        function getHealthColor(health) {
+            const ratio = health / 100;
+
+            if (ratio > 0.5) {
+                // Bright green → orange
+                const t = (ratio - 0.5) * 2;
+                const r = Math.round(255 * (1 - t));
+                const g = 255;
+                return `rgb(${r}, ${g}, 0)`; // green to yellow to orange
+            } else {
+                // Orange → red
+                const t = ratio * 2;
+                const r = 255;
+                const g = Math.round(255 * t);
+                return `rgb(${r}, ${g}, 0)`; // orange to red
+            }
+        }
+
+
+        // Global health setter and show/hide toggle
+        setHealthBar = function(health, show = true) {
+            const clamped = Math.max(0, Math.min(health, 100));
+            fill.style.transform = `scaleY(${clamped / 100})`;
+            fill.style.background = getHealthColor(clamped);
+            container.style.display = show ? "flex" : "none";
+        };
+        setHealthBar(100, false)
+    })();
 
 
     function performInjection() {
@@ -1517,6 +1679,17 @@ function triggerXPDuper() {
                     }
                 }
                 
+                if (lastClosestId !== closestId) {
+                    if (hitboxes[lastClosestId]) { // Revert old target color
+                         hitboxes[lastClosestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 1, 1);
+                         hitboxes[lastClosestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 1, 1);
+                    }
+                    if (hitboxes[closestId]) { // Highlight new target
+                        hitboxes[closestId].material.diffuseColor = new Fuxny.Lion.Color3(1, 0, 0);
+                        hitboxes[closestId].material.emissiveColor = new Fuxny.Lion.Color3(1, 0, 0);
+                    }
+                }
+
                 lastClosestId = closestId;
 
             }, 200);
@@ -1524,6 +1697,7 @@ function triggerXPDuper() {
         inject();
         setupKillAuraBox();
         startTargetFinder();
+        setInterval(makeHitboxes, 1000);
     }
 
     waitForElement('div.MainLoadingState.FullyFancyText', (el) => {
@@ -1545,11 +1719,7 @@ function triggerXPDuper() {
         visuals: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>`,
         experimental: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
         settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
-        ai: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="12" width="16" height="8" rx="2"/><path d="M2 12h20"/><path d="M17.5 12V8h-3v4"/></svg>`,
-        credits: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
-        notes: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
-        antiAfk: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 20.5c.5-.5.8-1.2.8-2s-.3-1.5-.8-2c-.5-.5-1.2-.8-2-.8s-1.5.3-2 .8c-.5.5-.8 1.2-.8 2s.3 1.5.8 2c.5.5 1.2.8 2 .8s1.5-.3 2-.8zM18 8h-2.5c-1-1-1.5-2.5-1.5-4S13 0 14.5 0s2.5 1 2.5 2.5c0 .4-.1.8-.2 1.2M4 22V8h14v9.5c0 1.2-.8 2.3-2 2.8H6c-1.2-.5-2-1.6-2-2.8z"/></svg>`,
-        ping: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="16"></line></svg>`
+        clock: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`
     };
 
     // --- STYLES ---
@@ -1760,30 +1930,39 @@ function triggerXPDuper() {
 
         .hidden { display: none; }
 
-        .credit-entry {
-            background: rgba(255,255,255,0.05);
-            padding: 8px;
-            border-radius: 6px;
-            margin-bottom: 8px;
+        /* Clock styles */
+        .clock-container {
             display: flex;
+            justify-content: space-around;
             align-items: center;
+            padding: 10px 0;
         }
-        .credit-name {
-            font-weight: bold;
-            flex-grow: 1;
+        .analog-clock {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            position: relative;
+            background-size: cover;
+            background-position: center;
         }
-        .credit-badge {
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-left: 4px;
-            text-transform: uppercase;
+        .analog-clock.map-bg {
+            background-image: url('https://i.imgur.com/4lSLY2p.jpeg');
         }
-        .owner-badge { background: #ff4d4d; color: white; }
-        .dev-badge { background: #4d94ff; color: white; }
-        .admin-badge { background: #ffad33; color: white; }
-        .helper-badge { background: #33cc33; color: white; }
-
+        .clock-hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            background: var(--text-color);
+        }
+        .hour-hand { width: 4px; height: 30px; transform: translateX(-50%) rotate(0deg); }
+        .minute-hand { width: 3px; height: 40px; transform: translateX(-50%) rotate(0deg); }
+        .second-hand { width: 1px; height: 45px; background: var(--primary-color); transform: translateX(-50%) rotate(0deg); }
+        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; transform: translate(-50%, -50%); }
+        .digital-clock { text-align: center; }
+        .digital-time { font-size: 24px; font-weight: bold; }
+        .digital-timezone { font-size: 12px; opacity: 0.7; }
     `;
     document.head.appendChild(style);
 
@@ -1800,11 +1979,7 @@ function triggerXPDuper() {
             <div class="spectra-tab" data-tab="visuals">${icons.visuals}<span>Visuals</span></div>
             <div class="spectra-tab" data-tab="experimental">${icons.experimental}<span>Experimental</span></div>
             <div class="spectra-tab" data-tab="settings">${icons.settings}<span>Settings</span></div>
-            <div class="spectra-tab" data-tab="ai">${icons.ai}<span>AI</span></div>
-            <div class="spectra-tab" data-tab="credits">${icons.credits}<span>Credits</span></div>
-            <div class="spectra-tab" data-tab="notes">${icons.notes}<span>Notes</span></div>
-            <div class="spectra-tab" data-tab="anti-afk">${icons.antiAfk}<span>Anti AFK</span></div>
-            <div class="spectra-tab" data-tab="ping">${icons.ping}<span>Ping & FPS</span></div>
+            <div class="spectra-tab" data-tab="clock">${icons.clock}<span>Clocks & Time</span></div>
         </div>
         <div id="spectra-content">
             <div class="spectra-category" data-tab-content="main">
@@ -1831,8 +2006,11 @@ function triggerXPDuper() {
                 <div class="spectra-toggle"><label>ESP</label><input type="checkbox" id="hack-esp"></div>
                 <div class="spectra-toggle"><label>Chest ESP</label><input type="checkbox" id="hack-chest-esp"></div>
                 <div class="spectra-toggle"><label>Ore ESP</label><input type="checkbox" id="hack-ore-esp"></div>
+                <div class="spectra-toggle"><label>Hitboxes</label><input type="checkbox" id="hack-hitboxes"></div>
                 <div class="spectra-toggle"><label>Nametags</label><input type="checkbox" id="hack-nametags"></div>
+                <div class="spectra-toggle"><label>Enemy Health</label><input type="checkbox" id="hack-enemy-health"></div>
                 <div class="spectra-toggle"><label>Night</label><input type="checkbox" id="hack-night"></div>
+                <div class="spectra-toggle"><label>Bigheads</label><input type="checkbox" id="hack-bigheads"></div>
             </div>
 
             <div class="spectra-category hidden" data-tab-content="experimental">
@@ -1846,7 +2024,7 @@ function triggerXPDuper() {
 
             <div class="spectra-category hidden" data-tab-content="settings">
                 <div class="spectra-category-title">Settings</div>
-                <div class="spectra-toggle"><label>Anti-Ban (Safer)</label><input type="checkbox" id="hack-anti-ban" checked></div>
+                <div class="spectra-toggle"><label>Anti-Ban (Safer)</label><input type="checkbox" id="hack-anti-ban"></div>
                 <div class="spectra-toggle"><label>Inventory Cleaner</label><input type="checkbox" id="hack-inv-cleaner"></div>
                 <div class="spectra-category-title">Theme Settings</div>
                 <div class="spectra-setting">
@@ -1876,76 +2054,68 @@ function triggerXPDuper() {
                 <button class="spectra-button" id="hack-manual-inject">Manual Inject</button>
             </div>
 
-            <div class="spectra-category hidden" data-tab-content="ai">
-                <div class="spectra-category-title">Spectra Agent</div>
-                <div id="ai-chat-area" style="height: 180px; overflow-y: auto; border: 1px solid var(--border-color); padding: 8px; margin-bottom: 8px; background: #111; border-radius: 4px;"></div>
-                <div style="display: flex;">
-                    <input type="text" id="ai-chat-input" placeholder="Ask Spectra Agent..." style="flex-grow: 1; margin-right: 8px; background: #333; color: white; border: 1px solid #555; padding: 8px;">
-                    <button id="ai-chat-send" style="width: 80px;">Send</button>
+            <div class="spectra-category hidden" data-tab-content="clock">
+                <div class="spectra-category-title">Clocks & Time</div>
+                <div class="digital-clock">
+                    <div id="digital-time" class="digital-time">00:00:00</div>
+                    <div id="digital-timezone" class="digital-timezone">Timezone</div>
                 </div>
-            </div>
-
-            <div class="spectra-category hidden" data-tab-content="credits">
-                <div class="spectra-category-title">People Who Made Spectra</div>
-                <div class="credit-entry">
-                    <span class="credit-name">28wbsh (Nathan)</span>
-                    <span class="credit-badge owner-badge">Owner</span>
-                    <span class="credit-badge dev-badge">Head Dev</span>
+                <div class="clock-container">
+                    <div class="analog-clock">
+                        <div class="clock-hand hour-hand" id="analog-hour-1"></div>
+                        <div class="clock-hand minute-hand" id="analog-minute-1"></div>
+                        <div class="clock-hand second-hand" id="analog-second-1"></div>
+                        <div class="clock-center"></div>
+                    </div>
+                    <div class="analog-clock map-bg">
+                        <div class="clock-hand hour-hand" id="analog-hour-2"></div>
+                        <div class="clock-hand minute-hand" id="analog-minute-2"></div>
+                        <div class="clock-hand second-hand" id="analog-second-2"></div>
+                        <div class="clock-center"></div>
+                    </div>
                 </div>
-                <div class="credit-entry">
-                    <span class="credit-name">itz_a_time (uZytko)</span>
-                    <span class="credit-badge dev-badge">Developer</span>
-                    <span class="credit-badge admin-badge">Admin</span>
-                    <span class="credit-badge helper-badge">Assistant</span>
-                </div>
-                <div class="credit-entry">
-                    <span class="credit-name">skidmus</span>
-                    <span class="credit-badge dev-badge">Main Dev</span>
-                    <span class="credit-badge admin-badge">Admin</span>
-                </div>
-                <div class="credit-entry">
-                    <span class="credit-name">ge0rgecr_ (GEORGECR)</span>
-                    <span class="credit-badge helper-badge">Helper</span>
-                    <span class="credit-badge helper-badge">Idea Giver</span>
-                </div>
-                <div class="credit-entry">
-                    <span class="credit-name">itsph7d</span>
-                    <span class="credit-badge helper-badge">Helper</span>
-                    <span class="credit-badge helper-badge">Friend</span>
-                </div>
-                <div class="credit-entry">
-                    <span class="credit-name">wang</span>
-                    <span class="credit-badge dev-badge">Lead Dev</span>
-                    <span class="credit-badge admin-badge">Admin</span>
-                    <span class="credit-badge helper-badge">Assistant</span>
-                </div>
-                <div class="credit-entry">
-                    <span class="credit-name">zhiliao_2 (zhiliao)</span>
-                    <span class="credit-badge dev-badge">Head Dev</span>
-                    <span class="credit-badge admin-badge">Admin</span>
-                    <span class="credit-badge helper-badge">Assistant</span>
-                </div>
-            </div>
-
-            <div class="spectra-category hidden" data-tab-content="notes">
-                <div class="spectra-category-title">Notes</div>
-                <textarea id="spectra-notes-textarea" style="width: 100%; height: 200px; background: #222; color: white; border: 1px solid #555; padding: 8px; box-sizing: border-box; resize: none;"></textarea>
-            </div>
-
-            <div class="spectra-category hidden" data-tab-content="anti-afk">
-                <div class="spectra-category-title">Anti AFK</div>
-                <div class="spectra-toggle"><label>Enable Anti AFK</label><input type="checkbox" id="hack-anti-afk"></div>
-            </div>
-
-            <div class="spectra-category hidden" data-tab-content="ping">
-                <div class="spectra-category-title">Performance</div>
-                <div class="spectra-setting"><label>FPS:</label><span id="fps-display">...</span></div>
-                <div class="spectra-setting"><label>Ping:</label><span id="ping-display">...</span></div>
-                <div class="spectra-setting"><label>CPS:</label><span id="cps-display">...</span></div>
             </div>
         </div>
     `;
     document.body.appendChild(ui);
+
+    function setupClockLogic() {
+        const digitalTime = document.getElementById('digital-time');
+        const digitalTimezone = document.getElementById('digital-timezone');
+        const hourHand1 = document.getElementById('analog-hour-1');
+        const minuteHand1 = document.getElementById('analog-minute-1');
+        const secondHand1 = document.getElementById('analog-second-1');
+        const hourHand2 = document.getElementById('analog-hour-2');
+        const minuteHand2 = document.getElementById('analog-minute-2');
+        const secondHand2 = document.getElementById('analog-second-2');
+
+        function setDate() {
+            const now = new Date();
+            if (digitalTime) digitalTime.textContent = now.toLocaleTimeString();
+            if (digitalTimezone) {
+                try {
+                    digitalTimezone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ');
+                } catch (e) {
+                    digitalTimezone.textContent = "Timezone N/A";
+                }
+            }
+            const seconds = now.getSeconds();
+            const secondsDegrees = ((seconds / 60) * 360) + 90;
+            if (secondHand1) secondHand1.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
+            if (secondHand2) secondHand2.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
+            const mins = now.getMinutes();
+            const minsDegrees = ((mins / 60) * 360) + ((seconds/60)*6) + 90;
+            if (minuteHand1) minuteHand1.style.transform = `translateX(-50%) rotate(${minsDegrees}deg)`;
+            if (minuteHand2) minuteHand2.style.transform = `translateX(-50%) rotate(${minsDegrees}deg)`;
+            const hour = now.getHours();
+            const hourDegrees = ((hour / 12) * 360) + ((mins/60)*30) + 90;
+            if (hourHand1) hourHand1.style.transform = `translateX(-50%) rotate(${hourDegrees}deg)`;
+            if (hourHand2) hourHand2.style.transform = `translateX(-50%) rotate(${hourDegrees}deg)`;
+        }
+        setInterval(setDate, 1000);
+        setDate();
+    }
+    setupClockLogic();
 
     // --- THEME CUSTOMIZATION ---
     const uiElement = document.getElementById('spectra-ui');
@@ -2064,7 +2234,6 @@ function triggerXPDuper() {
     class Spider extends Module {
         constructor() { super("Spider"); }
         onRender() {
-            if (isScriptPaused || !injectedBool) return;
             if (l.noa.inputs.state.jump && n.noa.touchingWall()) {
                 n.noa.setVelocity(null, 5, null);
             }
@@ -2078,10 +2247,8 @@ function triggerXPDuper() {
             this.delay = 100;
         }
         onRender() {
-            if (isScriptPaused || !injectedBool) return;
-            const delay = antiBanEnabled ? 200 : 100;
             let now = Date.now();
-            if (now - this.lastExecutionTime >= delay) {
+            if (now - this.lastExecutionTime >= this.delay) {
                 this.lastExecutionTime = now;
                 this.tryKill();
             }
@@ -2142,10 +2309,6 @@ function triggerXPDuper() {
     };
 
     // --- HACK LOGIC & WIRING ---
-    document.addEventListener('visibilitychange', () => {
-        isScriptPaused = document.hidden;
-    });
-
     function setupHackEventListeners() {
         // Helper function to ensure injection before activation
         const preCheck = (featureName, checkboxElement) => {
@@ -2195,10 +2358,7 @@ function triggerXPDuper() {
             if (!preCheck("Killshot", e.target)) return;
             killshotEnabled = e.target.checked;
             if (killshotEnabled) {
-                killshotInterval = setInterval(() => {
-                    if (isScriptPaused || !injectedBool) return;
-                    shootAtEnemies();
-                }, 50);
+                killshotInterval = setInterval(shootAtEnemies, 50);
                 showTemporaryNotification("Killshot ENABLED");
             } else {
                 if (killshotInterval) clearInterval(killshotInterval);
@@ -2218,10 +2378,7 @@ function triggerXPDuper() {
         document.getElementById('hack-bhop')?.addEventListener('change', e => {
             if (!preCheck("BHOP", e.target)) return;
             if (e.target.checked) {
-                bhopIntervalId = setInterval(() => {
-                    if (isScriptPaused || !injectedBool) return;
-                    bunnyHop();
-                }, 50);
+                bhopIntervalId = setInterval(bunnyHop, 10);
                 showTemporaryNotification("BHOP enabled");
             } else {
                 clearInterval(bhopIntervalId);
@@ -2233,37 +2390,22 @@ function triggerXPDuper() {
         document.getElementById('hack-scaffold')?.addEventListener('change', e => {
             if (!preCheck("Scaffold", e.target)) return;
             if (e.target.checked) {
-                const interval = antiBanEnabled ? 100 : 50;
                 scaffoldIntervalId = setInterval(() => {
-                    if (isScriptPaused || !injectedBool) return;
                     const pos = Fuxny.entities.getState(1, 'position').position;
                     if (!pos || !playerEntity || playerEntity.heldItemState.heldType !== "CubeBlock") return;
-
-                    const blockX = Math.floor(pos[0]);
-                    const blockY = Math.floor(pos[1]);
-                    const blockZ = Math.floor(pos[2]);
-
+                    const exactX = pos[0], exactZ = pos[2];
+                    const blockX = Math.floor(exactX), blockY = Math.floor(pos[1]), blockZ = Math.floor(exactZ);
                     const checkPlace = (x, y, z) => (playerEntity.checkTargetedBlockCanBePlacedOver([x, y, z]) || r.values(Fuxny.world)[47].call(Fuxny.world, x, y, z) === 0);
-
-                    if (checkPlace(blockX, blockY - 1, blockZ)) {
-                        wangPlace([blockX, blockY - 1, blockZ]);
-                        return;
-                    }
-
-                    const offsets = [
-                        [1, 0], [-1, 0], [0, 1], [0, -1],
-                        [1, 1], [1, -1], [-1, 1], [-1, -1]
-                    ];
-
+                    if (checkPlace(blockX, blockY - 1, blockZ)) { wangPlace([blockX, blockY - 1, blockZ]); return; }
+                    const dx = exactX - blockX, dz = exactZ - blockZ;
+                    const offsets = [];
+                    if (dx < 0.3) offsets.push([-1, 0]); if (dx > 0.7) offsets.push([1, 0]);
+                    if (dz < 0.3) offsets.push([0, -1]); if (dz > 0.7) offsets.push([0, 1]);
                     for (const [ox, oz] of offsets) {
-                        const nx = blockX + ox;
-                        const nz = blockZ + oz;
-                        if (checkPlace(nx, blockY - 1, nz)) {
-                            wangPlace([nx, blockY - 1, nz]);
-                            return;
-                        }
+                        const nx = blockX + ox, nz = blockZ + oz;
+                        if (checkPlace(nx, blockY - 1, nz)) { wangPlace([nx, blockY - 1, nz]); return; }
                     }
-                }, interval);
+                }, 50);
                 showTemporaryNotification("Scaffold enabled");
             } else {
                 clearInterval(scaffoldIntervalId);
@@ -2277,7 +2419,7 @@ function triggerXPDuper() {
             const client = Fuxny?.clientOptions, body = Fuxny?.physics?.bodies?.[0];
             if (!client || !body) return;
             if (e.target.checked) {
-                Object.defineProperty(client, "airJumpCount", { get: () => { if (!body.resting) return 0; const [rx, , rz] = body.resting; return (rx === 1 || rx === -1 || rz === 1 || rz === -1) ? 1 : 0; }, set(_) {}, configurable: true });
+                Object.defineProperty(client, "airJumpCount", { get: () => { if (!body.resting) return 0; const [rx, , rz] = body.resting; return (rx === 1 || rx === -1 || rz === 1 || rz === -1) ? 999 : 0; }, set(_) {}, configurable: true });
                 showTemporaryNotification("Walljump enabled");
             } else {
                 Object.defineProperty(client, "airJumpCount", { value: 0, writable: true, configurable: true });
@@ -2372,12 +2514,7 @@ function triggerXPDuper() {
             if (!preCheck("Chest ESP", e.target)) return;
             chestESPEnabled = e.target.checked;
             if (chestESPEnabled || oreESPEnabled) {
-                if (!chestOreInterval) {
-                    chestOreInterval = setInterval(() => {
-                        if (isScriptPaused || !injectedBool) return;
-                        scanAllChunks();
-                    }, 5000);
-                }
+                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
                 scanAllChunks();
             } else {
                 if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
@@ -2390,12 +2527,7 @@ function triggerXPDuper() {
             if (!preCheck("Ore ESP", e.target)) return;
             oreESPEnabled = e.target.checked;
             if (chestESPEnabled || oreESPEnabled) {
-                if (!chestOreInterval) {
-                    chestOreInterval = setInterval(() => {
-                        if (isScriptPaused || !injectedBool) return;
-                        scanAllChunks();
-                    }, 5000);
-                }
+                if (!chestOreInterval) { chestOreInterval = setInterval(scanAllChunks, 5000); }
                 scanAllChunks();
             } else {
                 if (chestOreInterval) { clearInterval(chestOreInterval); chestOreInterval = null; }
@@ -2404,6 +2536,15 @@ function triggerXPDuper() {
             showTemporaryNotification(`Ore ESP ${oreESPEnabled ? 'enabled' : 'disabled'}`);
         });
 
+        document.getElementById('hack-hitboxes')?.addEventListener('change', e => {
+            if (!preCheck("Hitboxes", e.target)) return;
+            hitBoxEnabled = e.target.checked;
+            for (const eId in hitboxes) {
+                const box = hitboxes[eId];
+                if (box) box.isVisible = hitBoxEnabled;
+            }
+            showTemporaryNotification(`Hitboxes ${hitBoxEnabled ? 'enabled' : 'disabled'}`);
+        });
 
         document.getElementById('hack-nametags')?.addEventListener('change', e => {
             if (!preCheck("Nametags", e.target)) return;
@@ -2412,7 +2553,6 @@ function triggerXPDuper() {
                 if (!cachedNameTagParent) { nameTagsEnabled = false; return; }
                 nameTagParent = cachedNameTagParent;
                 nameTagsIntervalId = setInterval(() => {
-                    if (isScriptPaused || !injectedBool) return;
                     const entityList = Fuxny.entityList;
                     if (!entityList) return;
                     for (const subGroup of Object.values(entityList)) {
@@ -2458,6 +2598,19 @@ function triggerXPDuper() {
             }
         });
 
+        document.getElementById('hack-enemy-health')?.addEventListener('change', e => {
+             if (!preCheck("Enemy Health", e.target)) return;
+             if (e.target.checked) {
+                 startHealthWatcher();
+                 showTemporaryNotification("Enemy Health enabled");
+             } else {
+                if (healthWatcherInterval) clearInterval(healthWatcherInterval);
+                if (resetTimeout) clearTimeout(resetTimeout);
+                setHealthBar(100, false);
+                lastPercent = null;
+                showTemporaryNotification("Enemy Health disabled");
+             }
+        });
 
         document.getElementById('hack-night')?.addEventListener('change', e => {
             if (!preCheck("Night", e.target)) return;
@@ -2478,6 +2631,45 @@ function triggerXPDuper() {
             }
         });
 
+        document.getElementById('hack-bigheads')?.addEventListener('change', e => {
+            if (!preCheck("Bigheads", e.target)) return;
+            const objectData = r.values(Fuxny.rendering)[18].objectData;
+            if (e.target.checked) {
+                for (let key in objectData) {
+                    let obj = objectData[key];
+                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                        let node = obj.nodes[16];
+                        node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
+                        node.position._y = -1;
+                    }
+                }
+                bigHeadsInterval = setInterval(() => {
+                    for (let key in objectData) {
+                        let obj = objectData[key];
+                        if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                            let node = obj.nodes[16];
+                            if (node.scale._x === 1) {
+                                node.scale._x = 6; node.scale._y = 6; node.scale._z = 6;
+                                node.position._y = -1;
+                            }
+                        }
+                    }
+                }, 10000);
+                showTemporaryNotification("Bigheads enabled");
+            } else {
+                for (let key in objectData) {
+                    let obj = objectData[key];
+                    if (obj?.type === "Player" && obj.nodes?.[16] && obj !== objectData[1]) {
+                         let node = obj.nodes[16];
+                         node.scale._x = 1; node.scale._y = 1; node.scale._z = 1;
+                         node.position._y = 0.7199999690055847;
+                    }
+                }
+                clearInterval(bigHeadsInterval);
+                bigHeadsInterval = null;
+                showTemporaryNotification("Bigheads disabled");
+            }
+        });
 
         // --- Experimental ---
         document.getElementById('hack-blink')?.addEventListener('change', e => {
@@ -2546,10 +2738,7 @@ function triggerXPDuper() {
             if (!preCheck("Inventory Cleaner", e.target)) return;
             inventoryCleanerEnabled = e.target.checked;
             if (inventoryCleanerEnabled) {
-                inventoryCleanerInterval = setInterval(() => {
-                    if (isScriptPaused || !injectedBool) return;
-                    cleanInventory();
-                }, 2000); // Run every 2 seconds
+                inventoryCleanerInterval = setInterval(cleanInventory, 2000); // Run every 2 seconds
                 showTemporaryNotification("Inventory Cleaner ENABLED");
             } else {
                 if (inventoryCleanerInterval) clearInterval(inventoryCleanerInterval);
@@ -2620,309 +2809,18 @@ function triggerXPDuper() {
             showTemporaryNotification("Attempting manual injection...");
             performInjection();
         });
-
-        let antiAfkInterval = null;
-        document.getElementById('hack-anti-afk')?.addEventListener('change', e => {
-            if (!preCheck("Anti AFK", e.target)) return;
-            if (e.target.checked) {
-                antiAfkInterval = setInterval(() => {
-                    D.fakeMouseEvent('mousemove');
-                }, 10000); // every 10 seconds
-                showTemporaryNotification("Anti AFK enabled");
-            } else {
-                if (antiAfkInterval) clearInterval(antiAfkInterval);
-                antiAfkInterval = null;
-                showTemporaryNotification("Anti AFK disabled");
-            }
-        });
-
-        function find_ores_data() {
-            if (!oreESPEnabled || !Fuxny.entities) return [];
-
-            const ores = [];
-            for (const chunkKey in chestBoxes) {
-                for (const { mesh } of chestBoxes[chunkKey]) {
-                    const color = mesh.material.emissiveColor;
-                    let oreType = null;
-                    if (color.r === 0 && color.g === 0 && color.b === 1) oreType = 'diamond';
-                    else if (color.r === 0.7 && color.g === 0.5 && color.b === 1) oreType = 'emerald';
-
-                    if(oreType) {
-                        const orePos = mesh.position.asArray();
-                        ores.push({type: oreType, position: [Math.round(orePos[0]), Math.round(orePos[1]), Math.round(orePos[2])]});
-                    }
-                }
-            }
-            return ores;
-        }
-
-        function findNearestOre() {
-            if (!oreESPEnabled || !Fuxny.entities) return null;
-            const myPos = Fuxny.entities.getState(1, 'position').position;
-            let nearestOre = null;
-            let minDistance = Infinity;
-
-            const allOres = find_ores_data();
-            for (const ore of allOres) {
-                if (ore.type === 'diamond') {
-                    const dist = S.distanceBetweenSqrt(myPos, ore.position);
-                    if (dist < minDistance) {
-                        minDistance = dist;
-                        nearestOre = { position: ore.position, distance: dist };
-                    }
-                }
-            }
-            return nearestOre;
-        }
-
-        function get_player_list_data() {
-            const players = [];
-            if (!Fuxny?.bloxd?.entityNames || !Fuxny?.entities) return players;
-            for (const id in Fuxny.bloxd.entityNames) {
-                if (id === "1") continue;
-                const name = Fuxny.bloxd.entityNames[id].entityName;
-                const pos = Fuxny.entities.getState(id, 'position')?.position;
-                if (name && pos) {
-                    players.push({
-                        name: name,
-                        position: [Math.round(pos[0]), Math.round(pos[1]), Math.round(pos[2])]
-                    });
-                }
-            }
-            return players;
-        }
-
-        function get_player_list() {
-            return JSON.stringify(get_player_list_data());
-        }
-
-        function find_chests_data() {
-            if (!chestESPEnabled || !Fuxny.entities) return [];
-            const chests = [];
-            for (const chunkKey in chestBoxes) {
-                for (const { mesh } of chestBoxes[chunkKey]) {
-                    const color = mesh.material.emissiveColor;
-                    if (color.r === 1 && color.g === 0.5 && color.b === 0) {
-                        const chestPos = mesh.position.asArray();
-                        chests.push([Math.round(chestPos[0]), Math.round(chestPos[1]), Math.round(chestPos[2])]);
-                    }
-                }
-            }
-            return chests;
-        }
-
-        function find_chests() {
-            return JSON.stringify(find_chests_data());
-        }
-
-        function toggle_feature(featureName, enabled) {
-            const featureId = `hack-${featureName.toLowerCase().replace(' ', '-')}`;
-            const toggle = document.getElementById(featureId);
-            if (toggle) {
-                if (toggle.checked !== enabled) {
-                    toggle.click();
-                }
-                return `Successfully set ${featureName} to ${enabled ? 'ON' : 'OFF'}.`;
-            }
-            return `Could not find a feature named ${featureName}.`;
-        }
-
-        // --- AI Chat Logic ---
-        const aiChatArea = document.getElementById('ai-chat-area');
-        const aiChatInput = document.getElementById('ai-chat-input');
-        const aiChatSendBtn = document.getElementById('ai-chat-send');
-
-        let chatHistory = [];
-        let currentGameState = {};
-
-        function addMessageToChat(role, content) {
-            const messageElement = document.createElement('div');
-            messageElement.style.marginBottom = '8px';
-            messageElement.innerHTML = `<strong>${role === 'user' ? 'You' : 'Spectra Agent'}:</strong> ${content}`;
-            aiChatArea.appendChild(messageElement);
-            aiChatArea.scrollTop = aiChatArea.scrollHeight;
-        }
-
-        async function handleAIChat() {
-            const userInput = aiChatInput.value;
-            if (!userInput) return;
-
-            addMessageToChat('user', userInput);
-            aiChatInput.value = '';
-            chatHistory.push({ role: 'user', content: userInput });
-
-            try {
-                const tools = [
-                    {
-                        type: "function",
-                        function: {
-                            name: "find_nearest_ore",
-                            description: "Find the nearest diamond ore to the player.",
-                            parameters: { type: "object", properties: {} }
-                        }
-                    },
-                    {
-                        type: "function",
-                        function: {
-                            name: "get_player_list",
-                            description: "Get a list of all players in the game and their current coordinates.",
-                            parameters: { type: "object", properties: {} }
-                        }
-                    },
-                    {
-                        type: "function",
-                        function: {
-                            name: "sort_inventory",
-                            description: "Sorts the player's inventory by cleaning it and organizing items into their correct slots.",
-                            parameters: { type: "object", properties: {} }
-                        }
-                    },
-                    {
-                        type: "function",
-                        function: {
-                            name: "find_chests",
-                            description: "Finds all visible chests and lists their coordinates.",
-                            parameters: { type: "object", properties: {} }
-                        }
-                    },
-                    {
-                        type: "function",
-                        function: {
-                            name: "toggle_feature",
-                            description: "Enables or disables a feature.",
-                            parameters: {
-                                type: "object",
-                                properties: {
-                                    featureName: {
-                                        type: "string",
-                                        description: "The name of the feature to toggle, e.g., 'Scaffold', 'Killaura'."
-                                    },
-                                    enabled: {
-                                        type: "boolean",
-                                        description: "The desired state of the feature. true for on, false for off."
-                                    }
-                                },
-                                required: ["featureName", "enabled"]
-                            }
-                        }
-                    }
-                ];
-
-                const systemMessage = {
-                    role: 'system',
-                    content: `You are a helpful in-game assistant. If the user asks for information that is unavailable in the current game state (e.g., an empty list of players or ores), inform them that you cannot see the requested information at the moment. Current game state: ${JSON.stringify(currentGameState)}`
-                };
-
-                const completion = await puter.ai.chat([systemMessage, ...chatHistory], { tools });
-                let content = completion.message.content;
-
-                if (completion.message.tool_calls?.length > 0) {
-                    const toolCall = completion.message.tool_calls[0];
-                    let toolResponseContent = "";
-                    if (toolCall.function.name === 'find_nearest_ore') {
-                        const nearestOre = findNearestOre();
-                        toolResponseContent = nearestOre ? `The nearest ore is at ${nearestOre.position.join(', ')}` : "No ores found nearby.";
-                    } else if (toolCall.function.name === 'get_player_list') {
-                        toolResponseContent = get_player_list();
-                    } else if (toolCall.function.name === 'sort_inventory') {
-                        cleanInventory();
-                        toolResponseContent = "I have sorted your inventory.";
-                    } else if (toolCall.function.name === 'find_chests') {
-                        toolResponseContent = find_chests();
-                    } else if (toolCall.function.name === 'toggle_feature') {
-                        const args = JSON.parse(toolCall.function.arguments);
-                        toolResponseContent = toggle_feature(args.featureName, args.enabled);
-                    }
-
-                    const toolResponse = {
-                        role: "tool",
-                        tool_call_id: toolCall.id,
-                        content: toolResponseContent
-                    };
-                    chatHistory.push(completion.message);
-                    chatHistory.push(toolResponse);
-                    const finalCompletion = await puter.ai.chat(chatHistory);
-                    content = finalCompletion.message.content;
-                }
-
-                addMessageToChat('assistant', content);
-                chatHistory.push({ role: 'assistant', content });
-
-            } catch (error) {
-                addMessageToChat('assistant', `Error: ${error.message}`);
-            }
-        }
-
-        aiChatSendBtn.addEventListener('click', handleAIChat);
-        aiChatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') handleAIChat();
-        });
-
-        setInterval(() => {
-            if (!injectedBool) return;
-            try {
-                currentGameState = {
-                    playerPosition: Fuxny.entities.getState(1, 'position').position,
-                    players: get_player_list_data(),
-                    ores: find_ores_data(),
-                    chests: find_chests_data(),
-                };
-            } catch (e) {
-                console.error("Error updating game state:", e);
-            }
-        }, 1000);
     }
 
     setupHackEventListeners();
 
     const modulesToRender = [];
-    const fpsDisplay = document.getElementById('fps-display');
     function renderLoop() {
         for (const module of modulesToRender) {
             module.onRender();
         }
-        if (fpsDisplay && Fuxny?.noa?.rendering) {
-            fpsDisplay.textContent = Math.round(Fuxny.noa.rendering.fps);
-        }
         requestAnimationFrame(renderLoop);
     }
     
-    const notesTextarea = document.getElementById('spectra-notes-textarea');
-    if (notesTextarea) {
-        notesTextarea.addEventListener('input', () => {
-            localStorage.setItem('spectraNotes', notesTextarea.value);
-        });
-        const savedNotes = localStorage.getItem('spectraNotes');
-        if (savedNotes) {
-            notesTextarea.value = savedNotes;
-        }
-    }
-
-    // --- Performance Display ---
-    const pingDisplay = document.getElementById('ping-display');
-    const cpsDisplay = document.getElementById('cps-display');
-    let clicks = 0;
-
-    if (cpsDisplay) {
-        document.addEventListener('mousedown', () => {
-            clicks++;
-        });
-        setInterval(() => {
-            cpsDisplay.textContent = clicks;
-            clicks = 0;
-        }, 1000);
-    }
-
-    if (pingDisplay) {
-        setInterval(() => {
-            if (colyRoom?.connection) {
-                pingDisplay.textContent = `${colyRoom.connection.rtt}ms`;
-            } else {
-                pingDisplay.textContent = '...';
-            }
-        }, 1000);
-    }
-
     loadTheme();
     renderLoop();
 })();
