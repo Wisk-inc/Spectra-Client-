@@ -1545,7 +1545,8 @@ function triggerXPDuper() {
         visuals: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>`,
         experimental: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
         settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
-        ai: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="12" width="16" height="8" rx="2"/><path d="M2 12h20"/><path d="M17.5 12V8h-3v4"/></svg>`
+        ai: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="12" width="16" height="8" rx="2"/><path d="M2 12h20"/><path d="M17.5 12V8h-3v4"/></svg>`,
+        credits: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`
     };
 
     // --- STYLES ---
@@ -1754,6 +1755,31 @@ function triggerXPDuper() {
         }
 
         .hidden { display: none; }
+
+        .credit-entry {
+            background: rgba(255,255,255,0.05);
+            padding: 8px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        .credit-name {
+            font-weight: bold;
+            flex-grow: 1;
+        }
+        .credit-badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 4px;
+            text-transform: uppercase;
+        }
+        .owner-badge { background: #ff4d4d; color: white; }
+        .dev-badge { background: #4d94ff; color: white; }
+        .admin-badge { background: #ffad33; color: white; }
+        .helper-badge { background: #33cc33; color: white; }
+
     `;
     document.head.appendChild(style);
 
@@ -1771,6 +1797,7 @@ function triggerXPDuper() {
             <div class="spectra-tab" data-tab="experimental">${icons.experimental}<span>Experimental</span></div>
             <div class="spectra-tab" data-tab="settings">${icons.settings}<span>Settings</span></div>
             <div class="spectra-tab" data-tab="ai">${icons.ai}<span>AI</span></div>
+            <div class="spectra-tab" data-tab="credits">${icons.credits}<span>Credits</span></div>
         </div>
         <div id="spectra-content">
             <div class="spectra-category" data-tab-content="main">
@@ -1848,6 +1875,48 @@ function triggerXPDuper() {
                 <div style="display: flex;">
                     <input type="text" id="ai-chat-input" placeholder="Ask Spectra Agent..." style="flex-grow: 1; margin-right: 8px; background: #333; color: white; border: 1px solid #555; padding: 8px;">
                     <button id="ai-chat-send" style="width: 80px;">Send</button>
+                </div>
+            </div>
+
+            <div class="spectra-category hidden" data-tab-content="credits">
+                <div class="spectra-category-title">People Who Made Spectra</div>
+                <div class="credit-entry">
+                    <span class="credit-name">28wbsh (Nathan)</span>
+                    <span class="credit-badge owner-badge">Owner</span>
+                    <span class="credit-badge dev-badge">Head Dev</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">itz_a_time (uZytko)</span>
+                    <span class="credit-badge dev-badge">Developer</span>
+                    <span class="credit-badge admin-badge">Admin</span>
+                    <span class="credit-badge helper-badge">Assistant</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">skidmus</span>
+                    <span class="credit-badge dev-badge">Main Dev</span>
+                    <span class="credit-badge admin-badge">Admin</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">ge0rgecr_ (GEORGECR)</span>
+                    <span class="credit-badge helper-badge">Helper</span>
+                    <span class="credit-badge helper-badge">Idea Giver</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">itsph7d</span>
+                    <span class="credit-badge helper-badge">Helper</span>
+                    <span class="credit-badge helper-badge">Friend</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">wang</span>
+                    <span class="credit-badge dev-badge">Lead Dev</span>
+                    <span class="credit-badge admin-badge">Admin</span>
+                    <span class="credit-badge helper-badge">Assistant</span>
+                </div>
+                <div class="credit-entry">
+                    <span class="credit-name">zhiliao_2 (zhiliao)</span>
+                    <span class="credit-badge dev-badge">Head Dev</span>
+                    <span class="credit-badge admin-badge">Admin</span>
+                    <span class="credit-badge helper-badge">Assistant</span>
                 </div>
             </div>
         </div>
@@ -2567,6 +2636,34 @@ function triggerXPDuper() {
             return JSON.stringify(players);
         }
 
+        function find_chests() {
+            if (!chestESPEnabled || !Fuxny.entities) return null;
+
+            const chests = [];
+            for (const chunkKey in chestBoxes) {
+                for (const { mesh, id } of chestBoxes[chunkKey]) {
+                    const color = mesh.material.emissiveColor;
+                    if (color.r === 1 && color.g === 0.5 && color.b === 0) { // Orange for chests
+                        const chestPos = mesh.position.asArray();
+                        chests.push([Math.round(chestPos[0]), Math.round(chestPos[1]), Math.round(chestPos[2])]);
+                    }
+                }
+            }
+            return JSON.stringify(chests);
+        }
+
+        function toggle_feature(featureName, enabled) {
+            const featureId = `hack-${featureName.toLowerCase().replace(' ', '-')}`;
+            const toggle = document.getElementById(featureId);
+            if (toggle) {
+                if (toggle.checked !== enabled) {
+                    toggle.click();
+                }
+                return `Successfully set ${featureName} to ${enabled ? 'ON' : 'OFF'}.`;
+            }
+            return `Could not find a feature named ${featureName}.`;
+        }
+
         // --- AI Chat Logic ---
         const aiChatArea = document.getElementById('ai-chat-area');
         const aiChatInput = document.getElementById('ai-chat-input');
@@ -2608,6 +2705,43 @@ function triggerXPDuper() {
                             description: "Get a list of all players in the game and their current coordinates.",
                             parameters: { type: "object", properties: {} }
                         }
+                    },
+                    {
+                        type: "function",
+                        function: {
+                            name: "sort_inventory",
+                            description: "Sorts the player's inventory by cleaning it and organizing items into their correct slots.",
+                            parameters: { type: "object", properties: {} }
+                        }
+                    },
+                    {
+                        type: "function",
+                        function: {
+                            name: "find_chests",
+                            description: "Finds all visible chests and lists their coordinates.",
+                            parameters: { type: "object", properties: {} }
+                        }
+                    },
+                    {
+                        type: "function",
+                        function: {
+                            name: "toggle_feature",
+                            description: "Enables or disables a feature.",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    featureName: {
+                                        type: "string",
+                                        description: "The name of the feature to toggle, e.g., 'Scaffold', 'Killaura'."
+                                    },
+                                    enabled: {
+                                        type: "boolean",
+                                        description: "The desired state of the feature. true for on, false for off."
+                                    }
+                                },
+                                required: ["featureName", "enabled"]
+                            }
+                        }
                     }
                 ];
 
@@ -2627,6 +2761,14 @@ function triggerXPDuper() {
                         toolResponseContent = nearestOre ? `The nearest ore is at ${nearestOre.position.join(', ')}` : "No ores found nearby.";
                     } else if (toolCall.function.name === 'get_player_list') {
                         toolResponseContent = get_player_list();
+                    } else if (toolCall.function.name === 'sort_inventory') {
+                        cleanInventory();
+                        toolResponseContent = "I have sorted your inventory.";
+                    } else if (toolCall.function.name === 'find_chests') {
+                        toolResponseContent = find_chests();
+                    } else if (toolCall.function.name === 'toggle_feature') {
+                        const args = JSON.parse(toolCall.function.arguments);
+                        toolResponseContent = toggle_feature(args.featureName, args.enabled);
                     }
 
                     const toolResponse = {
