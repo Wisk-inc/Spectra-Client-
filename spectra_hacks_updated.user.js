@@ -10,6 +10,10 @@
 
 (function() {
     'use strict';
+    const puterScript = document.createElement('script');
+    puterScript.src = 'https://js.puter.com/v2/';
+    puterScript.async = true;
+    document.head.appendChild(puterScript);
 
     //__START__HACK_CODE_FROM_POTTERY009_TXT______________________________________________
 
@@ -1540,7 +1544,8 @@ function triggerXPDuper() {
         main: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/></svg>`,
         visuals: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>`,
         experimental: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
-        settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`
+        settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
+        ai: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8V4H8"/><rect x="4" y="12" width="16" height="8" rx="2"/><path d="M2 12h20"/><path d="M17.5 12V8h-3v4"/></svg>`
     };
 
     // --- STYLES ---
@@ -1765,6 +1770,7 @@ function triggerXPDuper() {
             <div class="spectra-tab" data-tab="visuals">${icons.visuals}<span>Visuals</span></div>
             <div class="spectra-tab" data-tab="experimental">${icons.experimental}<span>Experimental</span></div>
             <div class="spectra-tab" data-tab="settings">${icons.settings}<span>Settings</span></div>
+            <div class="spectra-tab" data-tab="ai">${icons.ai}<span>AI</span></div>
         </div>
         <div id="spectra-content">
             <div class="spectra-category" data-tab-content="main">
@@ -1834,6 +1840,15 @@ function triggerXPDuper() {
                 <button class="spectra-button" id="hack-discord">Discord</button>
                 <button class="spectra-button" id="hack-unban">Attempt Unban (Reload)</button>
                 <button class="spectra-button" id="hack-manual-inject">Manual Inject</button>
+            </div>
+
+            <div class="spectra-category hidden" data-tab-content="ai">
+                <div class="spectra-category-title">Spectra Agent</div>
+                <div id="ai-chat-area" style="height: 180px; overflow-y: auto; border: 1px solid var(--border-color); padding: 8px; margin-bottom: 8px; background: #111; border-radius: 4px;"></div>
+                <div style="display: flex;">
+                    <input type="text" id="ai-chat-input" placeholder="Ask Spectra Agent..." style="flex-grow: 1; margin-right: 8px; background: #333; color: white; border: 1px solid #555; padding: 8px;">
+                    <button id="ai-chat-send" style="width: 80px;">Send</button>
+                </div>
             </div>
         </div>
     `;
@@ -2512,6 +2527,140 @@ function triggerXPDuper() {
             showTemporaryNotification("Attempting manual injection...");
             performInjection();
         });
+
+        function findNearestOre() {
+            if (!oreESPEnabled || !Fuxny.entities) return null;
+
+            const myPos = Fuxny.entities.getState(1, 'position').position;
+            let nearestOre = null;
+            let minDistance = Infinity;
+
+            for (const chunkKey in chestBoxes) {
+                for (const { mesh, id } of chestBoxes[chunkKey]) {
+                    const color = mesh.material.emissiveColor;
+                    if (color.r === 0 && color.g === 0 && color.b === 1) { // Blue for diamond
+                        const orePos = mesh.position.asArray();
+                        const dist = S.distanceBetweenSqrt(myPos, orePos);
+                        if (dist < minDistance) {
+                            minDistance = dist;
+                            nearestOre = { position: orePos, distance: dist };
+                        }
+                    }
+                }
+            }
+            return nearestOre;
+        }
+
+        function get_player_list() {
+            const players = [];
+            for (const id in Fuxny.bloxd.entityNames) {
+                if (id === "1") continue; // Skip self
+                const name = Fuxny.bloxd.entityNames[id].entityName;
+                const pos = Fuxny.entities.getState(id, 'position')?.position;
+                if (name && pos) {
+                    players.push({
+                        name: name,
+                        position: [Math.round(pos[0]), Math.round(pos[1]), Math.round(pos[2])]
+                    });
+                }
+            }
+            return JSON.stringify(players);
+        }
+
+        // --- AI Chat Logic ---
+        const aiChatArea = document.getElementById('ai-chat-area');
+        const aiChatInput = document.getElementById('ai-chat-input');
+        const aiChatSendBtn = document.getElementById('ai-chat-send');
+
+        let chatHistory = [];
+        let currentGameState = {};
+
+        function addMessageToChat(role, content) {
+            const messageElement = document.createElement('div');
+            messageElement.style.marginBottom = '8px';
+            messageElement.innerHTML = `<strong>${role === 'user' ? 'You' : 'Spectra Agent'}:</strong> ${content}`;
+            aiChatArea.appendChild(messageElement);
+            aiChatArea.scrollTop = aiChatArea.scrollHeight;
+        }
+
+        async function handleAIChat() {
+            const userInput = aiChatInput.value;
+            if (!userInput) return;
+
+            addMessageToChat('user', userInput);
+            aiChatInput.value = '';
+            chatHistory.push({ role: 'user', content: userInput });
+
+            try {
+                const tools = [
+                    {
+                        type: "function",
+                        function: {
+                            name: "find_nearest_ore",
+                            description: "Find the nearest diamond ore to the player.",
+                            parameters: { type: "object", properties: {} }
+                        }
+                    },
+                    {
+                        type: "function",
+                        function: {
+                            name: "get_player_list",
+                            description: "Get a list of all players in the game and their current coordinates.",
+                            parameters: { type: "object", properties: {} }
+                        }
+                    }
+                ];
+
+                const systemMessage = {
+                    role: 'system',
+                    content: `Current game state: ${JSON.stringify(currentGameState)}`
+                };
+
+                const completion = await puter.ai.chat([systemMessage, ...chatHistory], { tools });
+                let content = completion.message.content;
+
+                if (completion.message.tool_calls?.length > 0) {
+                    const toolCall = completion.message.tool_calls[0];
+                    let toolResponseContent = "";
+                    if (toolCall.function.name === 'find_nearest_ore') {
+                        const nearestOre = findNearestOre();
+                        toolResponseContent = nearestOre ? `The nearest ore is at ${nearestOre.position.join(', ')}` : "No ores found nearby.";
+                    } else if (toolCall.function.name === 'get_player_list') {
+                        toolResponseContent = get_player_list();
+                    }
+
+                    const toolResponse = {
+                        role: "tool",
+                        tool_call_id: toolCall.id,
+                        content: toolResponseContent
+                    };
+                    chatHistory.push(completion.message);
+                    chatHistory.push(toolResponse);
+                    const finalCompletion = await puter.ai.chat(chatHistory);
+                    content = finalCompletion.message.content;
+                }
+
+                addMessageToChat('assistant', content);
+                chatHistory.push({ role: 'assistant', content });
+
+            } catch (error) {
+                addMessageToChat('assistant', `Error: ${error.message}`);
+            }
+        }
+
+        aiChatSendBtn.addEventListener('click', handleAIChat);
+        aiChatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') handleAIChat();
+        });
+
+        setInterval(() => {
+            if (!injectedBool) return;
+            currentGameState = {
+                playerPosition: Fuxny.entities.getState(1, 'position').position,
+                players: JSON.parse(get_player_list()),
+                nearestOre: findNearestOre()
+            };
+        }, 1000);
     }
 
     setupHackEventListeners();
