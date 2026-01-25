@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         Spectra Client (Hacks Extracted)
+// @name         Spectra premium
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  All hacks from pottery009.txt with the Spectra Client UI
@@ -10,6 +10,11 @@
 
 (function() {
     'use strict';
+
+    // Inject Puter.js
+    const puterScript = document.createElement('script');
+    puterScript.src = 'https://js.puter.com/v2/';
+    document.head.appendChild(puterScript);
 
     //__START__HACK_CODE_FROM_POTTERY009_TXT______________________________________________
 
@@ -143,7 +148,8 @@
     let fadeVolumeInterval;
     let spaceHeld = false;
     let bigHeadsEnabled = false;
-    let antiBanEnabled = false;
+    let antiBanEnabled = true;
+    let isScriptPaused = false;
 
 
     const scannedChunks = new Set();
@@ -1712,14 +1718,16 @@ function triggerXPDuper() {
 
     //__END__HACK_CODE_FROM_POTTERY009_TXT________________________________________________
 
-
     // --- ICONS (Lucide style SVGs) ---
     const icons = {
         main: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M2 12h20"/></svg>`,
         visuals: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9h9"/></svg>`,
         experimental: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
         settings: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.46.46 1.14.61 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09c0 .66.39 1.25 1 1.51.68.28 1.36.13 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.46.46-.61 1.14-.33 1.82.26.61.85 1 1.51 1H21a2 2 0 0 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
-        clock: `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`
+        'ai-chat': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+        'credits': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`,
+        'clocks': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`,
+        'notes': `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2H6.5A2.5 2.5 0 0 0 4 4.5v15A2.5 2.5 0 0 0 6.5 22h11a2.5 2.5 0 0 0 2.5-2.5V8.5L13.5 2z"></path><polyline points="13 2 13 9 20 9"></polyline></svg>`
     };
 
     // --- STYLES ---
@@ -1752,7 +1760,7 @@ function triggerXPDuper() {
             transform: translate(-50%, -50%);
             width: 520px;
             max-width: 95%;
-            height: 320px;
+            height: 420px;
             background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             border-radius: 14px;
             border: 1px solid var(--border-color);
@@ -1930,39 +1938,137 @@ function triggerXPDuper() {
 
         .hidden { display: none; }
 
-        /* Clock styles */
-        .clock-container {
+        /* AI Chat Styles */
+        #ai-chat-output strong {
+            font-weight: bold;
+        }
+        #ai-chat-input {
+            font-family: var(--font-family);
+        }
+
+        /* Credits Styles */
+        .credit-item {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.04);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+        }
+        .credit-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin-right: 15px;
+            border: 2px solid var(--primary-color);
+        }
+        .credit-info h3 {
+            margin: 0 0 4px 0;
+            color: var(--text-color);
+            font-size: 15px;
+        }
+        .credit-info p {
+            margin: 0;
+            color: #ccc;
+            font-size: 13px;
+        }
+
+        /* Clocks Styles */
+        #digital-clock-container {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            padding: 10px 0;
+            margin-bottom: 15px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .digital-time {
+            color: #fff;
+        }
+        .digital-seconds {
+            color: var(--primary-color);
+            font-size: 24px;
+        }
+        #clocks-wrapper {
             display: flex;
             justify-content: space-around;
             align-items: center;
-            padding: 10px 0;
         }
-        .analog-clock {
-            width: 100px;
-            height: 100px;
+        .analog-clock-container canvas {
             border-radius: 50%;
-            border: 2px solid var(--primary-color);
-            position: relative;
-            background-size: cover;
-            background-position: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.5);
         }
-        .analog-clock.map-bg {
-            background-image: url('https://i.imgur.com/4lSLY2p.jpeg');
+        #map-clock-container {
+            border-radius: 50%;
+            border: 4px solid var(--secondary-color);
+            padding: 4px;
         }
-        .clock-hand {
-            position: absolute;
-            bottom: 50%;
-            left: 50%;
-            transform-origin: bottom;
-            background: var(--text-color);
+
+        /* Notes & Reminders Styles */
+        #notes-textarea {
+            width: 95%;
+            height: 120px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            padding: 8px;
+            margin-bottom: 10px;
+            resize: vertical;
         }
-        .hour-hand { width: 4px; height: 30px; transform: translateX(-50%) rotate(0deg); }
-        .minute-hand { width: 3px; height: 40px; transform: translateX(-50%) rotate(0deg); }
-        .second-hand { width: 1px; height: 45px; background: var(--primary-color); transform: translateX(-50%) rotate(0deg); }
-        .clock-center { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; background: var(--primary-color); border-radius: 50%; transform: translate(-50%, -50%); }
-        .digital-clock { text-align: center; }
-        .digital-time { font-size: 24px; font-weight: bold; }
-        .digital-timezone { font-size: 12px; opacity: 0.7; }
+        #reminder-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        #reminder-container input {
+            flex-grow: 1;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            border-radius: 8px;
+            padding: 8px;
+        }
+        #set-reminder-btn {
+            background: var(--primary-color);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.04);
+            padding: 8px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            font-size: 13px;
+        }
+        .delete-reminder-btn {
+            background: none;
+            border: none;
+            color: #ff5555;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        /* Stats Display Styles */
+        #stats-container {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: var(--font-family);
+            font-size: 12px;
+            z-index: 10000;
+        }
     `;
     document.head.appendChild(style);
 
@@ -1979,7 +2085,10 @@ function triggerXPDuper() {
             <div class="spectra-tab" data-tab="visuals">${icons.visuals}<span>Visuals</span></div>
             <div class="spectra-tab" data-tab="experimental">${icons.experimental}<span>Experimental</span></div>
             <div class="spectra-tab" data-tab="settings">${icons.settings}<span>Settings</span></div>
-            <div class="spectra-tab" data-tab="clock">${icons.clock}<span>Clocks & Time</span></div>
+            <div class="spectra-tab" data-tab="ai-chat">${icons['ai-chat']}<span>AI Chat</span></div>
+            <div class="spectra-tab" data-tab="credits">${icons['credits']}<span>Credits</span></div>
+            <div class="spectra-tab" data-tab="clocks">${icons['clocks']}<span>Clocks</span></div>
+            <div class="spectra-tab" data-tab="notes">${icons['notes']}<span>Notes</span></div>
         </div>
         <div id="spectra-content">
             <div class="spectra-category" data-tab-content="main">
@@ -2053,69 +2162,19 @@ function triggerXPDuper() {
                 <button class="spectra-button" id="hack-unban">Attempt Unban (Reload)</button>
                 <button class="spectra-button" id="hack-manual-inject">Manual Inject</button>
             </div>
-
-            <div class="spectra-category hidden" data-tab-content="clock">
-                <div class="spectra-category-title">Clocks & Time</div>
-                <div class="digital-clock">
-                    <div id="digital-time" class="digital-time">00:00:00</div>
-                    <div id="digital-timezone" class="digital-timezone">Timezone</div>
-                </div>
-                <div class="clock-container">
-                    <div class="analog-clock">
-                        <div class="clock-hand hour-hand" id="analog-hour-1"></div>
-                        <div class="clock-hand minute-hand" id="analog-minute-1"></div>
-                        <div class="clock-hand second-hand" id="analog-second-1"></div>
-                        <div class="clock-center"></div>
-                    </div>
-                    <div class="analog-clock map-bg">
-                        <div class="clock-hand hour-hand" id="analog-hour-2"></div>
-                        <div class="clock-hand minute-hand" id="analog-minute-2"></div>
-                        <div class="clock-hand second-hand" id="analog-second-2"></div>
-                        <div class="clock-center"></div>
-                    </div>
-                </div>
-            </div>
+            <div class="spectra-category hidden" data-tab-content="ai-chat"></div>
+            <div class="spectra-category hidden" data-tab-content="credits"></div>
+            <div class="spectra-category hidden" data-tab-content="clocks"></div>
+            <div class="spectra-category hidden" data-tab-content="notes"></div>
         </div>
     `;
     document.body.appendChild(ui);
 
-    function setupClockLogic() {
-        const digitalTime = document.getElementById('digital-time');
-        const digitalTimezone = document.getElementById('digital-timezone');
-        const hourHand1 = document.getElementById('analog-hour-1');
-        const minuteHand1 = document.getElementById('analog-minute-1');
-        const secondHand1 = document.getElementById('analog-second-1');
-        const hourHand2 = document.getElementById('analog-hour-2');
-        const minuteHand2 = document.getElementById('analog-minute-2');
-        const secondHand2 = document.getElementById('analog-second-2');
-
-        function setDate() {
-            const now = new Date();
-            if (digitalTime) digitalTime.textContent = now.toLocaleTimeString();
-            if (digitalTimezone) {
-                try {
-                    digitalTimezone.textContent = Intl.DateTimeFormat().resolvedOptions().timeZone.replace(/_/g, ' ');
-                } catch (e) {
-                    digitalTimezone.textContent = "Timezone N/A";
-                }
-            }
-            const seconds = now.getSeconds();
-            const secondsDegrees = ((seconds / 60) * 360) + 90;
-            if (secondHand1) secondHand1.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
-            if (secondHand2) secondHand2.style.transform = `translateX(-50%) rotate(${secondsDegrees}deg)`;
-            const mins = now.getMinutes();
-            const minsDegrees = ((mins / 60) * 360) + ((seconds/60)*6) + 90;
-            if (minuteHand1) minuteHand1.style.transform = `translateX(-50%) rotate(${minsDegrees}deg)`;
-            if (minuteHand2) minuteHand2.style.transform = `translateX(-50%) rotate(${minsDegrees}deg)`;
-            const hour = now.getHours();
-            const hourDegrees = ((hour / 12) * 360) + ((mins/60)*30) + 90;
-            if (hourHand1) hourHand1.style.transform = `translateX(-50%) rotate(${hourDegrees}deg)`;
-            if (hourHand2) hourHand2.style.transform = `translateX(-50%) rotate(${hourDegrees}deg)`;
-        }
-        setInterval(setDate, 1000);
-        setDate();
-    }
-    setupClockLogic();
+    // --- Initialize extra UI components ---
+    createAIChatUI();
+    createCreditsUI();
+    createClocksUI();
+    createNotesUI();
 
     // --- THEME CUSTOMIZATION ---
     const uiElement = document.getElementById('spectra-ui');
@@ -2207,6 +2266,19 @@ function triggerXPDuper() {
         });
     }
 
+    // --- Anti-Ban: Pause on unfocus ---
+    document.addEventListener('visibilitychange', () => {
+        if (!antiBanEnabled) return;
+
+        if (document.hidden) {
+            isScriptPaused = true;
+            showTemporaryNotification("Script paused (unfocused)", 1000);
+        } else {
+            isScriptPaused = false;
+            showTemporaryNotification("Script resumed", 1000);
+        }
+    });
+
     // --- NEW HACK MODULES ---
     class Module {
         constructor(name) { this.name = name; this.isEnabled = false; }
@@ -2247,6 +2319,7 @@ function triggerXPDuper() {
             this.delay = 100;
         }
         onRender() {
+            if (isScriptPaused) return;
             let now = Date.now();
             if (now - this.lastExecutionTime >= this.delay) {
                 this.lastExecutionTime = now;
@@ -2307,6 +2380,413 @@ function triggerXPDuper() {
         unban: new Unban(),
         highJump: new HighJump()
     };
+
+    // --- AI Chat ---
+    let aiChatHistory = [];
+
+    function createAIChatUI() {
+        const content = document.querySelector('[data-tab-content="ai-chat"]');
+        if (!content) return;
+
+        content.innerHTML = `
+            <div class="spectra-category-title">AI Chat Assistant</div>
+            <div id="ai-chat-output" style="height: 280px; overflow-y: scroll; border: 1px solid var(--border-color); padding: 8px; border-radius: 8px; margin-bottom: 8px; background: rgba(0,0,0,0.2);"></div>
+            <input type="text" id="ai-chat-input" placeholder="Ask the AI... (e.g., 'find diamond')" style="width: calc(100% - 16px); background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); color: white; padding: 8px; border-radius: 8px;">
+        `;
+
+        const input = content.querySelector('#ai-chat-input');
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && input.value.trim() !== '') {
+                handleAICommand(input.value.trim());
+                input.value = '';
+            }
+        });
+        addMessageToAIChat('Spectra AI', 'Hello! How can I help you?');
+    }
+
+    function updateChatOutput() {
+        const output = document.getElementById('ai-chat-output');
+        if (!output) return;
+        output.innerHTML = aiChatHistory.map(item =>
+            `<div style="margin-bottom: 8px;">
+                <strong style="color: ${item.sender === 'User' ? 'var(--primary-color)' : '#00ffff'};">${item.sender}:</strong>
+                <span style="white-space: pre-wrap;">${item.message}</span>
+            </div>`
+        ).join('');
+        output.scrollTop = output.scrollHeight;
+    }
+
+    function addMessageToAIChat(sender, message) {
+        aiChatHistory.push({ sender, message });
+        if (aiChatHistory.length > 100) {
+            aiChatHistory.shift();
+        }
+        updateChatOutput();
+    }
+
+    // --- Credits ---
+    function createCreditsUI() {
+        const content = document.querySelector('[data-tab-content="credits"]');
+        if (!content) return;
+        const developers = [
+            { name: "Jules", role: "Lead Developer", avatar: "https://file.garden/aKP04nPJ-0H0X3HE/IMG_8828.jpeg" },
+            { name: "pottery009", role: "Original Exploit Developer", avatar: "https://file.garden/aKP04nPJ-0H0X3HE/1000333965-removebg-preview.png" },
+            { name: "ChatGPT", role: "Code Whisperer", avatar: "https://file.garden/aKP04nPJ-0H0X3HE/chatgpt-logo-02AFA704B5-seeklogo.com.png" }
+        ];
+        content.innerHTML = `
+            <div class="spectra-category-title">Credits</div>
+            ${developers.map(dev => `
+                <div class="credit-item">
+                    <img src="${dev.avatar}" alt="${dev.name}" class="credit-avatar">
+                    <div class="credit-info">
+                        <h3>${dev.name}</h3>
+                        <p>${dev.role}</p>
+                    </div>
+                </div>
+            `).join('')}
+        `;
+    }
+
+    // --- AI Game State & Tools ---
+    let gameState = {};
+
+    function updateGameState() {
+        if (!injectedBool || !Fuxny.bloxd) {
+            gameState = { error: "Game not fully loaded or injected." };
+            return;
+        }
+        const myPos = Fuxny.entities.getState(1, 'position')?.position;
+        const players = n.noa.playerList.map(id => {
+            const pos = Fuxny.entities.getState(id, 'position')?.position;
+            const name = Fuxny.bloxd.entityNames[id]?.entityName || `Player ${id}`;
+            return { id, name, position: pos ? {x: pos[0], y: pos[1], z: pos[2]} : null };
+        });
+
+        gameState = {
+            timestamp: new Date().toISOString(),
+            player: {
+                position: myPos ? {x: myPos[0], y: myPos[1], z: myPos[2]} : null,
+                health: Fuxny.entities.getState(1, "genericLifeformState")?.health,
+                inventory: playerInventoryParent?.playerInventory?.items.map(item => item ? `${item.amount}x ${item.name}` : null).filter(Boolean) || []
+            },
+            players: players,
+            hacks: {
+                killaura: newHacks.killaura.isEnabled,
+                bhop: bhopIntervalId !== null,
+                scaffold: scaffoldIntervalId !== null,
+                esp: espEnabled,
+            }
+        };
+    }
+
+    setInterval(updateGameState, 2000);
+
+    const aiTools = {
+        findNearest: (type) => {
+            const myPos = Fuxny.entities.getState(1, 'position')?.position;
+            if (!myPos) return "Could not get your position.";
+            let blockIDs = [];
+            if (type.toLowerCase().includes('ore')) blockIDs = [44, 45, 465, 50];
+            else if (type.toLowerCase().includes('chest')) blockIDs = [204, 205, 206, 207];
+            else return `Unknown item to find: ${type}. Try 'ore' or 'chest'.`;
+
+            let closest = null, minDist = Infinity;
+            const chunkHash = Fuxny.world[Fuxny.impKey].hash;
+            for (const key in chunkHash) {
+                const chunk = chunkHash[key];
+                const blockData = chunk[chunkDataField];
+                if (!blockData?.data) continue;
+                for (let i = 0; i < blockData.data.length; i++) {
+                    if (blockIDs.includes(blockData.data[i])) {
+                        const [x,y,z] = reverseIndex(i, blockData.stride);
+                        const worldPos = [chunk.pos[0] + x, chunk.pos[1] + y, chunk.pos[2] + z];
+                        const dist = S.distanceBetweenSqrt(myPos, worldPos);
+                        if (dist < minDist) {
+                            minDist = dist;
+                            closest = worldPos;
+                        }
+                    }
+                }
+            }
+            return closest ? `Found ${type} at ${closest.map(Math.round).join(', ')} (${Math.round(minDist)}m away).` : `No ${type} found nearby.`;
+        },
+        listPlayers: () => {
+            if (gameState.players && gameState.players.length > 0) {
+                return "Players online:\n" + gameState.players.map(p => `- ${p.name} at ${p.position ? `(${Math.round(p.position.x)}, ${Math.round(p.position.y)}, ${Math.round(p.position.z)})` : 'Unknown location'}`).join('\n');
+            }
+            return "No other players found.";
+        },
+        toggleHack: (hackName, state) => {
+            const checkbox = document.getElementById(`hack-${hackName.toLowerCase().replace(/\s/g, '-')}`);
+            if (!checkbox) return `Hack '${hackName}' not found.`;
+            const shouldBeEnabled = (state === 'on' || state === true);
+            if (checkbox.checked !== shouldBeEnabled) {
+                checkbox.click();
+            }
+            return `${hackName} has been turned ${shouldBeEnabled ? 'ON' : 'OFF'}.`;
+        },
+        sortInventory: () => {
+            cleanInventory();
+            return "Inventory sorted.";
+        }
+    };
+
+    async function handleAICommand(command) {
+        addMessageToAIChat('User', command);
+        addMessageToAIChat('Spectra AI', 'Thinking...');
+
+        try {
+            if (typeof puter === 'undefined') {
+                addMessageToAIChat('Spectra AI', 'Error: Puter.js is not loaded.');
+                return;
+            }
+
+            const systemPrompt = `You are Spectra AI, a helpful and concise in-game assistant for a block game.
+Current game state:
+${JSON.stringify(gameState, null, 2)}
+
+Available tools:
+- findNearest(type: 'ore' | 'chest'): Finds the nearest ore or chest.
+- listPlayers(): Lists all players and their coordinates.
+- toggleHack(hackName: string, state: 'on' | 'off'): Toggles a hack on or off.
+- sortInventory(): Sorts the player's inventory.
+
+Based on the user's prompt, decide if a tool should be used. If so, respond with a JSON object like {"tool": "toolName", "args": ["arg1", "arg2"]}.
+If no tool is needed, just respond with a helpful message.`;
+
+            const response = await puter.ai.chat(systemPrompt + `\n\nUser: ${command}`);
+            aiChatHistory.pop(); // Remove "Thinking..." message
+
+            let aiResponse = response.text;
+            try {
+                const jsonResponse = JSON.parse(aiResponse);
+                if (jsonResponse.tool && aiTools[jsonResponse.tool]) {
+                    const toolResult = aiTools[jsonResponse.tool](...jsonResponse.args);
+                    addMessageToAIChat('Spectra AI', `Executing tool: ${jsonResponse.tool}...`);
+                    addMessageToAIChat('Spectra AI', toolResult);
+                } else {
+                    addMessageToAIChat('Spectra AI', aiResponse);
+                }
+            } catch (e) {
+                // Not a JSON response, so it's a direct answer
+                addMessageToAIChat('Spectra AI', aiResponse);
+            }
+
+        } catch (error) {
+            console.error("AI Error:", error);
+            aiChatHistory.pop();
+            addMessageToAIChat('Spectra AI', 'Sorry, I encountered an error. Please try again.');
+        }
+    }
+
+    // --- Clocks and Time ---
+    function createClocksUI() {
+        const content = document.querySelector('[data-tab-content="clocks"]');
+        if (!content) return;
+
+        content.innerHTML = `
+            <div class="spectra-category-title">Clocks & Time</div>
+            <div id="digital-clock-container"></div>
+            <div id="clocks-wrapper">
+                <div class="analog-clock-container">
+                    <canvas id="analog-clock-1" width="120" height="120"></canvas>
+                </div>
+                <div class="analog-clock-container" id="map-clock-container">
+                    <canvas id="analog-clock-2" width="150" height="150"></canvas>
+                </div>
+            </div>
+        `;
+        startClocks();
+    }
+
+    function startClocks() {
+        const digitalContainer = document.getElementById('digital-clock-container');
+        const canvas1 = document.getElementById('analog-clock-1');
+        const canvas2 = document.getElementById('analog-clock-2');
+
+        if (!digitalContainer || !canvas1 || !canvas2) return;
+
+        const ctx1 = canvas1.getContext('2d');
+        const ctx2 = canvas2.getContext('2d');
+
+        const mapBg = new Image();
+        mapBg.src = 'https://file.garden/aKP04nPJ-0H0X3HE/dscovrepicmoontransitfull.gif';
+        mapBg.onload = () => {
+            drawAnalogClock(ctx2, 150, mapBg);
+        };
+
+
+        function updateClocks() {
+            if (document.hidden) {
+                requestAnimationFrame(updateClocks);
+                return;
+            }
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            digitalContainer.innerHTML = `
+                <span class="digital-time">${hours}:${minutes}</span>
+                <span class="digital-seconds">:${seconds}</span>
+            `;
+
+            drawAnalogClock(ctx1, 120);
+            drawAnalogClock(ctx2, 150, mapBg.complete ? mapBg : null);
+
+            requestAnimationFrame(updateClocks);
+        }
+
+        updateClocks();
+    }
+
+    function drawAnalogClock(ctx, size, bgImage = null) {
+        const radius = size / 2;
+        ctx.clearRect(0, 0, size, size);
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(radius, radius, radius - 2, 0, 2 * Math.PI);
+        ctx.clip();
+        if (bgImage && bgImage.complete) {
+            ctx.drawImage(bgImage, 0, 0, size, size);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0,0,size,size);
+        } else {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(0,0,size,size);
+        }
+        ctx.restore();
+
+        ctx.beginPath();
+        ctx.arc(radius, radius, radius - 2, 0, 2 * Math.PI);
+        ctx.strokeStyle = 'var(--primary-color)';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        ctx.font = `${radius * 0.15}px Arial`;
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        for (let i = 1; i <= 12; i++) {
+            const angle = i * Math.PI / 6;
+            const x = radius + Math.sin(angle) * (radius * 0.85);
+            const y = radius - Math.cos(angle) * (radius * 0.85);
+            ctx.fillText(i.toString(), x, y);
+        }
+
+        ctx.beginPath();
+        ctx.arc(radius, radius, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+
+
+        const now = new Date();
+        const hours = now.getHours() % 12;
+        const minutes = now.getMinutes();
+        const seconds = now.getSeconds();
+
+        const hourAngle = (hours + minutes / 60) * (2 * Math.PI / 12) - Math.PI / 2;
+        drawHand(ctx, radius, hourAngle, radius * 0.5, 5, '#fff');
+
+        const minuteAngle = (minutes + seconds / 60) * (2 * Math.PI / 60) - Math.PI / 2;
+        drawHand(ctx, radius, minuteAngle, radius * 0.75, 3, '#fff');
+
+        const secondAngle = seconds * (2 * Math.PI / 60) - Math.PI / 2;
+        drawHand(ctx, radius, secondAngle, radius * 0.9, 2, 'var(--primary-color)');
+    }
+
+    function drawHand(ctx, radius, angle, length, width, color) {
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.lineTo(radius + Math.cos(angle) * length, radius + Math.sin(angle) * length);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.stroke();
+    }
+
+    // --- Notes ---
+    function createNotesUI() {
+        const content = document.querySelector('[data-tab-content="notes"]');
+        if (!content) return;
+
+        content.innerHTML = `
+            <div class="spectra-category-title">Notes & Reminders</div>
+            <textarea id="notes-textarea" placeholder="Your notes..."></textarea>
+            <div id="reminder-container">
+                <input type="text" id="reminder-input" placeholder="Reminder message...">
+                <input type="datetime-local" id="reminder-time">
+                <button id="set-reminder-btn">Set Reminder</button>
+            </div>
+            <div id="reminders-list"></div>
+        `;
+
+        const textarea = content.querySelector('#notes-textarea');
+        textarea.value = localStorage.getItem('spectra-notes') || '';
+        textarea.addEventListener('input', () => {
+            localStorage.setItem('spectra-notes', textarea.value);
+        });
+
+        content.querySelector('#set-reminder-btn').addEventListener('click', setReminder);
+        renderReminders();
+    }
+
+    let reminders = JSON.parse(localStorage.getItem('spectra-reminders')) || [];
+
+    function setReminder() {
+        const input = document.getElementById('reminder-input');
+        const timeInput = document.getElementById('reminder-time');
+        if (input.value && timeInput.value) {
+            const reminder = {
+                id: Date.now(),
+                text: input.value,
+                time: new Date(timeInput.value).getTime()
+            };
+            reminders.push(reminder);
+            saveAndRenderReminders();
+            input.value = '';
+            timeInput.value = '';
+        }
+    }
+
+    function checkReminders() {
+        const now = Date.now();
+        reminders = reminders.filter(r => {
+            if (now >= r.time) {
+                showTemporaryNotification(`Reminder: ${r.text}`, 5000);
+                return false;
+            }
+            return true;
+        });
+        saveAndRenderReminders();
+    }
+
+    function saveAndRenderReminders() {
+        localStorage.setItem('spectra-reminders', JSON.stringify(reminders));
+        renderReminders();
+    }
+
+    function renderReminders() {
+        const list = document.getElementById('reminders-list');
+        if (!list) return;
+        list.innerHTML = reminders
+            .sort((a,b) => a.time - b.time)
+            .map(r => `
+                <div class="reminder-item">
+                    <span>${r.text} (at ${new Date(r.time).toLocaleString()})</span>
+                    <button class="delete-reminder-btn" data-id="${r.id}">&times;</button>
+                </div>
+            `).join('');
+
+        document.querySelectorAll('.delete-reminder-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                reminders = reminders.filter(r => r.id !== id);
+                saveAndRenderReminders();
+            });
+        });
+    }
+
+    setInterval(checkReminders, 10000); // Check every 10 seconds
 
     // --- HACK LOGIC & WIRING ---
     function setupHackEventListeners() {
@@ -2391,19 +2871,25 @@ function triggerXPDuper() {
             if (!preCheck("Scaffold", e.target)) return;
             if (e.target.checked) {
                 scaffoldIntervalId = setInterval(() => {
+                    if (isScriptPaused) return;
                     const pos = Fuxny.entities.getState(1, 'position').position;
                     if (!pos || !playerEntity || playerEntity.heldItemState.heldType !== "CubeBlock") return;
-                    const exactX = pos[0], exactZ = pos[2];
-                    const blockX = Math.floor(exactX), blockY = Math.floor(pos[1]), blockZ = Math.floor(exactZ);
-                    const checkPlace = (x, y, z) => (playerEntity.checkTargetedBlockCanBePlacedOver([x, y, z]) || r.values(Fuxny.world)[47].call(Fuxny.world, x, y, z) === 0);
-                    if (checkPlace(blockX, blockY - 1, blockZ)) { wangPlace([blockX, blockY - 1, blockZ]); return; }
-                    const dx = exactX - blockX, dz = exactZ - blockZ;
-                    const offsets = [];
-                    if (dx < 0.3) offsets.push([-1, 0]); if (dx > 0.7) offsets.push([1, 0]);
-                    if (dz < 0.3) offsets.push([0, -1]); if (dz > 0.7) offsets.push([0, 1]);
+
+                    const blockX = Math.floor(pos[0]);
+                    const blockY = Math.floor(pos[1]) - 1;
+                    const blockZ = Math.floor(pos[2]);
+
+                    const offsets = [
+                        [0, 0], [-1, 0], [1, 0], [0, -1], [0, 1],
+                        [-1, -1], [-1, 1], [1, -1], [1, 1]
+                    ];
+
                     for (const [ox, oz] of offsets) {
-                        const nx = blockX + ox, nz = blockZ + oz;
-                        if (checkPlace(nx, blockY - 1, nz)) { wangPlace([nx, blockY - 1, nz]); return; }
+                        const checkX = blockX + ox;
+                        const checkZ = blockZ + oz;
+                        if (playerEntity.checkTargetedBlockCanBePlacedOver([checkX, blockY, checkZ]) || r.values(Fuxny.world)[47].call(Fuxny.world, checkX, blockY, checkZ) === 0) {
+                            wangPlace([checkX, blockY, checkZ]);
+                        }
                     }
                 }, 50);
                 showTemporaryNotification("Scaffold enabled");
@@ -2419,7 +2905,7 @@ function triggerXPDuper() {
             const client = Fuxny?.clientOptions, body = Fuxny?.physics?.bodies?.[0];
             if (!client || !body) return;
             if (e.target.checked) {
-                Object.defineProperty(client, "airJumpCount", { get: () => { if (!body.resting) return 0; const [rx, , rz] = body.resting; return (rx === 1 || rx === -1 || rz === 1 || rz === -1) ? 999 : 0; }, set(_) {}, configurable: true });
+                Object.defineProperty(client, "airJumpCount", { get: () => { if (!body.resting) return 0; const [rx, , rz] = body.resting; return (rx === 1 || rx === -1 || rz === 1 || rz === -1) ? 1 : 0; }, set(_) {}, configurable: true });
                 showTemporaryNotification("Walljump enabled");
             } else {
                 Object.defineProperty(client, "airJumpCount", { value: 0, writable: true, configurable: true });
@@ -2820,7 +3306,54 @@ function triggerXPDuper() {
         }
         requestAnimationFrame(renderLoop);
     }
-    
+
+    // --- Stats Display ---
+    const statsContainer = document.createElement('div');
+    statsContainer.id = 'stats-container';
+    document.body.appendChild(statsContainer);
+
+    let lastTime = performance.now();
+    let frames = 0;
+    let fps = 0;
+    let ping = 0;
+    let cps = 0;
+    let clicks = 0;
+    let lastClickTime = 0;
+
+    function updateStats() {
+        const time = performance.now();
+        frames++;
+        if (time >= lastTime + 1000) {
+            fps = Math.round((frames * 1000) / (time - lastTime));
+            lastTime = time;
+            frames = 0;
+        }
+
+        if (Fuxny.bloxd?.client?.latency) {
+            ping = Fuxny.bloxd.client.latency;
+        }
+
+        statsContainer.innerHTML = `
+            <div>FPS: ${fps}</div>
+            <div>Ping: ${ping}ms</div>
+            <div>CPS: ${cps}</div>
+        `;
+
+        requestAnimationFrame(updateStats);
+    }
+
+    document.addEventListener('mousedown', () => {
+        const now = performance.now();
+        if (now - lastClickTime < 1000) {
+            clicks++;
+        } else {
+            cps = clicks;
+            clicks = 1;
+            lastClickTime = now;
+        }
+    });
+
     loadTheme();
     renderLoop();
+    updateStats();
 })();
