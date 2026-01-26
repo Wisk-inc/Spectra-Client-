@@ -13,21 +13,10 @@
 
     //__START__HACK_CODE_FROM_POTTERY009_TXT______________________________________________
 
-    let Fuxny = {
-        findModule(code) {
-            if (!this.wpRequire) return null;
-            let modules = this.wpRequire.m;
-            for (let id in modules) {
-                if (modules[id] && modules[id].toString().includes(code)) {
-                    return this.wpRequire(id);
-                }
-            }
-            return null;
-        }
-    };
+    let Fuxny = {};
     let defaultAccent = "#FF0000";
 
-    const TITLE = "Spectra Client" //-----------------------Title
+    const TITLE = "Midnight__" //-----------------------Title
 
 
     const changeHealthBar = true // --------------------Change health bar color to gradient color
@@ -193,11 +182,15 @@
             return e.prototype = MouseEvent.prototype, e
         }
     };
-    var l = {
-        get noa() { return Fuxny.noa; },
-        init() { performInjection(); },
-        findModule(t) { return Fuxny.findModule(t); }
-    };
+    var C = {
+        wpRequire: null, _cachedNoa: null,
+        get noa() { return this?._cachedNoa || (this._cachedNoa = r.values(this.bloxdProps).find(t => t?.entities)), this._cachedNoa },
+        init() {
+            let t = Object.getOwnPropertyDescriptors(window), e = Object.keys(t).find(s => t[s]?.set?.toString().includes("++")), i = window[e] = window[e], o = Math.floor(Math.random() * 9999999 + 1);
+            i.push([ [o], {}, s => this.wpRequire = s ]), this.bloxdProps = r.values(this.findModule("nonBlocksClient:")).find(s => typeof s == "object")
+        },
+        findModule(t) { let e = this.wpRequire.m; for (let i in e) { let o = e[i]; if (o && o.toString().includes(t)) return this.wpRequire(i) } return null }
+    }, l = C;
     var I = {
         getPosition(t) { return l.noa.entities.getState(t, "position").position },
         get getMoveState() { return r.values(l.noa.entities)[36] },
@@ -843,37 +836,33 @@
 
     function distBetween(a, b) {
         return Math.sqrt(
-            (b[0] - a[0]) ** 2 +
-            (b[1] - a[1]) ** 2 +
-            (b[2] - a[2]) ** 2
+            (b[0]-a[0])**2 +
+            (b[1]-a[1])**2 +
+            (b[2]-a[2])**2
         );
     }
     function normVector(v) {
-        const len = Math.sqrt(v[0] ** 2 + v[1] ** 2 + v[2] ** 2);
-        return len > 0 ? [v[0] / len, v[1] / len, v[2] / len] : [0, 0, 0];
+        const len = Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2);
+        return len > 0 ? [v[0]/len, v[1]/len, v[2]/len] : [0,0,0];
     }
     function shootAtEnemies() {
         if (!playerEntity || !Fuxny.bloxd || !Fuxny.entities) return;
         const myPos = Fuxny.entities.getState(1, "position").position.slice();
         myPos[1] += 1.6;
-        if (!playerEntity.heldItemState?._gunItem || playerEntity.heldItemState._gunItem.heldItemState.heldType !== "Gun" || playerEntity.heldItemState._gunItem.reloading) return;
+        if (playerEntity.heldItemState._gunItem.heldItemState.heldType !== "Gun" ||playerEntity.heldItemState._gunItem.reloading) return;
         for (const key in Fuxny.bloxd.entityNames) {
             if (key === "1") continue;
             const entityData = Fuxny.entityList?.[1]?.[key];
             if (!entityData || !entityData._isAlive || !entityData.canAttack) continue;
-            if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.team) {
-                if (Fuxny.entityList[1][key].lobbyLeaderboardValues.team === Fuxny.entityList[1][1].lobbyLeaderboardValues.team) continue;
-            }
-            if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.teamDisplay) {
-                if (Fuxny.entityList[1][key].lobbyLeaderboardValues.teamDisplay === Fuxny.entityList[1][1].lobbyLeaderboardValues.teamDisplay) continue;
-            }
+        if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.team) {if (Fuxny.entityList[1][key].lobbyLeaderboardValues.team === Fuxny.entityList[1][1].lobbyLeaderboardValues.team) continue;}
+        if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.teamDisplay) {if (Fuxny.entityList[1][key].lobbyLeaderboardValues.teamDisplay === Fuxny.entityList[1][1].lobbyLeaderboardValues.teamDisplay) continue;}
             const enemyPos = Fuxny.entities.getState(key, "position")?.position;
             if (!enemyPos) continue;
-            const targetPos = [enemyPos[0], enemyPos[1] + 1.6, enemyPos[2]];
+            const targetPos = [enemyPos[0], enemyPos[1]+1.6, enemyPos[2]];
             const vector = normVector([
-                targetPos[0] - myPos[0],
-                targetPos[1] - myPos[1],
-                targetPos[2] - myPos[2]
+                targetPos[0]-myPos[0],
+                targetPos[1]-myPos[1],
+                targetPos[2]-myPos[2]
             ]);
             const gun = playerEntity.heldItemState._gunItem;
             const losCheck = gun.fireBullet(new Float32Array(vector), 0);
@@ -884,6 +873,46 @@
             gun.inaccuracyCalculator.getDirectionWithInaccuracy = originalFunc;
         }
     }
+
+function distBetween(a, b) {
+    return Math.sqrt(
+        (b[0]-a[0])**2 +
+        (b[1]-a[1])**2 +
+        (b[2]-a[2])**2
+    );
+}
+function normVector(v) {
+    const len = Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2);
+    return len > 0 ? [v[0]/len, v[1]/len, v[2]/len] : [0,0,0];
+}
+function shootAtEnemies() {
+    if (!playerEntity || !Fuxny.bloxd || !Fuxny.entities) return;
+    const myPos = Fuxny.entities.getState(1, "position").position.slice();
+    myPos[1] += 1.6;
+    if (playerEntity.heldItemState._gunItem.heldItemState.heldType !== "Gun" ||playerEntity.heldItemState._gunItem.reloading) return;
+    for (const key in Fuxny.bloxd.entityNames) {
+        if (key === "1") continue;
+        const entityData = Fuxny.entityList?.[1]?.[key];
+        if (!entityData || !entityData._isAlive || !entityData.canAttack) continue;
+	if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.team) {if (Fuxny.entityList[1][key].lobbyLeaderboardValues.team === Fuxny.entityList[1][1].lobbyLeaderboardValues.team) continue;}
+	if (Fuxny.entityList[1][key]?.lobbyLeaderboardValues?.teamDisplay) {if (Fuxny.entityList[1][key].lobbyLeaderboardValues.teamDisplay === Fuxny.entityList[1][1].lobbyLeaderboardValues.teamDisplay) continue;}
+        const enemyPos = Fuxny.entities.getState(key, "position")?.position;
+        if (!enemyPos) continue;
+        const targetPos = [enemyPos[0], enemyPos[1]+1.6, enemyPos[2]];
+        const vector = normVector([
+            targetPos[0]-myPos[0],
+            targetPos[1]-myPos[1],
+            targetPos[2]-myPos[2]
+        ]);
+        const gun = playerEntity.heldItemState._gunItem;
+        const losCheck = gun.fireBullet(new Float32Array(vector), 0);
+        if (losCheck.meshNodeHit !== "HeadMesh") continue;
+        const originalFunc = gun.inaccuracyCalculator.getDirectionWithInaccuracy;
+        gun.inaccuracyCalculator.getDirectionWithInaccuracy = () => new Float32Array(vector);
+        gun.fireBulletLocal();
+        gun.inaccuracyCalculator.getDirectionWithInaccuracy = originalFunc;
+    }
+}
 
 const materialRank = {
     "Wood": 0,
@@ -1351,42 +1380,24 @@ function triggerXPDuper() {
 
 
     function performInjection() {
-        if (injectedBool) return;
-
-        if (!Fuxny.wpRequire) {
+        l.init();
+        function inject() {
             let winDescriptors = Object.getOwnPropertyDescriptors(window);
             let wpName = Object.keys(winDescriptors).find(key => winDescriptors[key]?.set?.toString().includes("++"));
-            let wpInstance = window[wpName];
+            let wpInstance = window[wpName] = window[wpName];
 
-            if (!wpInstance) {
-                console.warn("Webpack instance not found yet...");
-                return;
-            }
-
+            // HILOCATOR push
             wpInstance.push([
                 [Math.floor(Math.random() * 90000) + 10000], {},
                 function(wpRequire) {
-                    Fuxny.wpRequire = wpRequire;
+                    Fuxny.findModule = (code) => wpRequire(Object.keys(wpRequire.m)[Object.values(wpRequire.m).findIndex(m => m.toString().includes(code))]);
+                    Fuxny.Props = Object.values(Fuxny.findModule("nonBlocksClient:")).find(prop => typeof prop == "object");
+                    Fuxny.noa = Object.values(Fuxny.Props).find(prop => prop?.entities);
+                    //Credits to, you guessed it wang!
                 }
             ]);
-        }
 
-        if (Fuxny.wpRequire && !Fuxny.noa) {
-            let mod = Fuxny.findModule("nonBlocksClient:");
-            if (!mod) mod = Fuxny.findModule("entities:");
 
-            Fuxny.Props = Object.values(mod || {}).find(prop => typeof prop == "object");
-            if (Fuxny.Props) {
-                Fuxny.noa = Object.values(Fuxny.Props).find(prop => prop?.entities);
-            }
-        }
-
-        if (!Fuxny.noa) {
-            console.warn("noa not found yet, retrying...");
-            return;
-        }
-
-        function inject() {
             const targetValue = r.values(Fuxny.noa.entities)[2];
             const entityEntries = Object.entries(Fuxny.noa.entities);
             Fuxny.impKey = entityEntries.find(([_, val]) => val === targetValue)?.[0];
@@ -1689,21 +1700,15 @@ function triggerXPDuper() {
         setInterval(makeHitboxes, 1000);
     }
 
-    const tryInject = () => {
-        if (injectedBool) return;
-        performInjection();
-        if (injectedBool) {
-            showTemporaryNotification("injection successful");
-        }
-    };
-
     waitForElement('div.MainLoadingState.FullyFancyText', (el) => {
         console.log('Target div appeared:', el);
-        tryInject();
+        performInjection();
+        if (!injectedBool) {
+            showTemporaryNotification("injection failed");
+        } else {
+            showTemporaryNotification("injection successful");
+        }
     });
-
-    // Fallback periodic check
-    setInterval(tryInject, 5000);
 
     //__END__HACK_CODE_FROM_POTTERY009_TXT________________________________________________
 
@@ -1953,7 +1958,6 @@ function triggerXPDuper() {
                 <div class="spectra-toggle"><label>Noclip Move</label><input type="checkbox" id="hack-noclip-move"></div>
                 <div class="spectra-toggle"><label>Kill Softly</label><input type="checkbox" id="hack-kill-softly"></div>
                 <div class="spectra-toggle"><label>BHOP Knife</label><input type="checkbox" id="hack-bhop-knife"></div>
-                <div class="spectra-toggle"><label>Nuker</label><input type="checkbox" id="hack-nuker"></div>
                 <button class="spectra-button" id="hack-auto-sw">Auto SW</button>
                 <button class="spectra-button" id="hack-noclip-place">Noclip Place</button>
                 <button class="spectra-button" id="hack-high-jump">High Jump</button>
@@ -2198,79 +2202,13 @@ function triggerXPDuper() {
         }
     }
 
-    class Nuker extends Module {
-        constructor() {
-            super("Nuker");
-            this.lastNuke = 0;
-            this.nukeDelay = 100;
-        }
-        onRender() {
-            if (!this.isEnabled) return;
-            if (Fuxny.noa && Fuxny.noa.inputs.state.fire) {
-                this.nuke();
-            }
-        }
-        nuke() {
-            let now = Date.now();
-            if (now - this.lastNuke < this.nukeDelay) return;
-            this.lastNuke = now;
-
-            let result = Fuxny.noa.picking.raycast(20);
-            if (result && result.position) {
-                this.breakBlockAt(result.position);
-            }
-        }
-        breakBlockAt(pos) {
-            try {
-                let heldItem = r.values(Fuxny.noa.entities[Fuxny.impKey])[22].list[0];
-                if (!heldItem || !heldItem._blockItem) return;
-
-                let breakingItem = heldItem._blockItem.breakingItem;
-                if (!breakingItem || !breakingItem.breakBlock) return;
-
-                let heldBlock = heldItem._blockItem;
-                let worldInstanceKey = Object.keys(heldBlock)[0];
-                let worldInstance = Object.values(heldBlock)[0];
-                let targetedBlockKey = Object.keys(worldInstance)[25];
-                let targetedBlock = worldInstance[targetedBlockKey];
-
-                function spoofTargetedBlock(position) {
-                    return new Proxy({}, {
-                        get(target, prop, receiver) {
-                            if (prop === worldInstanceKey) {
-                                return new Proxy(worldInstance, {
-                                    get(inner, key) {
-                                        if (key === targetedBlockKey) {
-                                            let spoofedTargetedBlock = Object.assign({}, targetedBlock);
-                                            spoofedTargetedBlock.position = position;
-                                            return spoofedTargetedBlock;
-                                        }
-                                        return worldInstance[key];
-                                    },
-                                });
-                            }
-                            if (prop === "checkTargetedBlockCanBePlacedOver") return () => true;
-                            if (typeof heldBlock[prop] === "function") return heldBlock[prop].bind(heldBlock);
-                            return heldBlock[prop];
-                        }
-                    });
-                }
-
-                breakingItem.breakBlock.call(spoofTargetedBlock(pos));
-            } catch (err) {
-                console.error("Nuker break error:", err);
-            }
-        }
-    }
-
     const newHacks = {
         antiSpike: new AntiSpike(),
         spider: new Spider(),
         killaura: new Killaura(),
         jesus: new Jesus(),
         unban: new Unban(),
-        highJump: new HighJump(),
-        nuker: new Nuker()
+        highJump: new HighJump()
     };
 
     // --- HACK LOGIC & WIRING ---
@@ -2332,7 +2270,6 @@ function triggerXPDuper() {
             }
         });
         setupRenderToggle('hack-killaura', newHacks.killaura);
-        setupRenderToggle('hack-nuker', newHacks.nuker);
         setupRenderToggle('hack-spider', newHacks.spider);
         setupSimpleToggle('hack-jesus', newHacks.jesus);
         setupSimpleToggle('hack-anti-spike', newHacks.antiSpike);
